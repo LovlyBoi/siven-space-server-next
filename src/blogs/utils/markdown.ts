@@ -2,7 +2,7 @@ import { marked } from 'marked';
 import { gfmHeadingId, getHeadingList } from 'marked-gfm-heading-id';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
-import type { ParsedHtml } from '../entities/markdown.entity';
+import type { ParsedHtml } from '../types';
 
 // 暂时保存outline
 const _outline = [];

@@ -2,7 +2,7 @@ import { IsString } from 'class-validator';
 
 // 博客类型
 export enum BlogType {
-  'all',
+  'all' = 0,
   'front-end-tec',
   'node',
   'math',
@@ -13,7 +13,7 @@ export enum BlogType {
 
 export class FindBlogDTO {
   @IsString()
-  type: string | BlogType;
+  type: string;
   readonly from?: string;
   @IsString()
   ps: string | number = '10';

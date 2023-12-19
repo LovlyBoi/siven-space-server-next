@@ -1,4 +1,11 @@
-import { Controller, Get, HttpException, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { BlogType, FindBlogDTO } from './dto/findBlogs.dto';
 import { BlogsService } from './blogs.service';
 import { toNumber } from 'src/utils';
@@ -13,9 +20,12 @@ export class BlogsController {
 
   // 获取所有 Blog
   @Get()
-  findAll(@Query() params: FindBlogDTO) {
+  async findAll(@Query() params: FindBlogDTO) {
     if (!(params.type in BlogType)) {
-      throw new HttpException(`${params.type} must be a BlogType.`, 400);
+      throw new HttpException(
+        'Query param `type` must be a BlogType.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     params.ps = toNumber(params.ps);
     params.pn = toNumber(params.pn);
@@ -23,16 +33,21 @@ export class BlogsController {
   }
 
   // 获取博客正文
-  @Get('/:id')
-  findBlogContent(
-    @Param('id') id: string,
-    @Query('type') type: 'markdown' | 'html' = 'html',
-  ) {
-    type = type === 'markdown' ? 'markdown' : 'html';
-    if (type === 'markdown') {
-      return this.blogsService.getBlogMarkdown(id);
-    } else {
-      return this.blogsService.getBlogHtml(id);
-    }
+  @Get('/html/:id')
+  async getBlogHtml(@Param('id') id: string) {
+    // 查看有没有博客信息
+    const blogInfo = await this.blogsService.findOne(id);
+    return {
+      parsed: await this.blogsService.getBlogHtml(id),
+      ...blogInfo,
+    };
+  }
+
+  // 获取博客正文
+  @Get('/markdown/:id')
+  async getBlogMarkdown(@Param('id') id: string) {
+    // 查看有没有博客信息
+    await this.blogsService.findOne(id);
+    return this.blogsService.getBlogMarkdown(id);
   }
 }

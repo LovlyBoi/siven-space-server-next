@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, createReadStream } from 'fs';
 import { readFile, writeFile, unlink } from 'fs/promises';
 import { resolve, isAbsolute } from 'path';
 import { parseMarkDown } from './markdown';
-import type { Outline, ParsedHtml } from '../entities/markdown.entity';
+import type { Outline, ParsedHtml } from '../types';
 
 export const useCacheLocation = (path?: string) =>
   path
