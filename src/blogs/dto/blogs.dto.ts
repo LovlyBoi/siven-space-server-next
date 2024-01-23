@@ -1,4 +1,4 @@
-import { BlogEntity } from '../entities/blog.entity';
+import { Blog } from '../entities/blog.entity';
 
 export class BlogDto {
   id: number;
@@ -12,7 +12,7 @@ export class BlogDto {
   title: string;
   pictures: string[];
 
-  static fromBlogEntity(blog: BlogEntity) {
+  static fromBlogEntity(blog: Blog) {
     return {
       id: blog.nanoid,
       author: blog.author,

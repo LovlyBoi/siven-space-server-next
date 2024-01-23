@@ -6,97 +6,99 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BlogType, FindBlogDTO } from './dto/findBlogs.dto';
 import { getHtmlById, getMarkdown } from './utils';
-import { BlogEntity } from './entities/blog.entity';
-import { BlogDto } from './dto/blogs.dto';
+import { Blog } from './entities/blog.entity';
+import { BlogType } from './dto/findBlogs.dto';
+
+type HandledParams = {
+  ps: number;
+  pn: number;
+  type?: BlogType;
+};
 
 @Injectable()
 export class BlogsService {
+  blogSelector = [
+    'blog.nanoid',
+    'user.user_name as blog_author',
+    'blog.type',
+    'blog.title',
+    'blog.pics',
+    'blog.tag_name',
+    'blog.tag_color',
+    'blog.publish_date',
+    'blog.update_date',
+  ];
+
   // 查询全部Blog
-  findAllBlogSql = `
-    SELECT
-      nanoid,
-      users.user_name as author,
-      type,
-      title,
-      pics,
-      tag_name,
-      tag_color,
-      publish_date,
-      update_date
-    FROM
-      blogs
-      INNER JOIN users ON users.user_id = blogs.author
-    WHERE
-      blogs.unuse = 0
-      AND blogs.audit = 0
-    ORDER BY
-      update_date DESC
-    LIMIT
-      ? OFFSET ?;`;
-
-  // 按照type查询Blog
-  findBlogByTypeSql = `
-    SELECT
-      nanoid,
-      users.user_name,
-      type,
-      title,
-      pics,
-      tag_name,
-      tag_color,
-      publish_date,
-      update_date
-    FROM
-      blogs
-      INNER JOIN users ON users.user_id = blogs.author
-    WHERE
-      blogs.type = ?
-      AND blogs.unuse = 0
-      AND blogs.audit = 0
-    ORDER BY
-      update_date DESC
-    LIMIT
-      ? OFFSET ?;`;
-
-  // 按照id查询Blog
-  findBlogByIdSql = `
-    SELECT
-      nanoid as id,
-      users.user_name as author,
-      type,
-      title,
-      pics as pictures,
-      audit,
-      JSON_OBJECT("name", tag_name, "color", tag_color) as tag,
-      publish_date as publishDate,
-      update_date as updateDate
-    FROM
-      blogs
-      INNER JOIN users ON users.user_id = blogs.author
-    WHERE
-      blogs.nanoid = ?
-      AND blogs.unuse = 0;`;
   constructor(
-    @InjectRepository(BlogEntity)
-    private readonly blogsRepository: Repository<BlogEntity>,
+    @InjectRepository(Blog)
+    private readonly blogsRepository: Repository<Blog>,
   ) {}
 
-  async findAll(params: FindBlogDTO) {
-    const sql =
-      params.type === 'all' ? this.findAllBlogSql : this.findBlogByTypeSql;
+  // 查询所有博客数据
+  selectAllBlogs(ps: number, pn: number) {
+    return this.blogsRepository
+      .createQueryBuilder('blog')
+      .select(this.blogSelector)
+      .innerJoinAndSelect('users', 'user', 'user.user_id = blog.author_id')
+      .where('blog.unuse = :unuse', { unuse: 0 })
+      .andWhere('blog.audit = :audit', { audit: 0 })
+      .orderBy('update_date', 'DESC')
+      .limit(ps)
+      .offset(pn)
+      .getMany();
+  }
 
-    const queryParams =
-      params.type === 'all'
-        ? [params.ps, params.pn]
-        : [BlogType[params.type], params.ps, params.pn];
+  // 查询某个作者的所有博客数据
+  selectBlogsByAuthor(authorId: string) {
+    return this.blogsRepository
+      .createQueryBuilder('blog')
+      .select(this.blogSelector)
+      .innerJoinAndSelect('users', 'user', 'user.user_id = blog.author_id')
+      .where('blog.unuse = :unuse', { unuse: 0 })
+      .andWhere('blog.author_id = :authorId', { authorId })
+      .orderBy('update_date', 'DESC')
+      .getMany();
+  }
 
-    const blogs = (await this.blogsRepository.query(
-      sql,
-      queryParams,
-    )) as BlogEntity[];
-    return blogs.map((b) => BlogDto.fromBlogEntity(b));
+  seleBlogById(id: string) {
+    return this.blogsRepository
+      .createQueryBuilder('blog')
+      .select(this.blogSelector)
+      .innerJoinAndSelect('users', 'user', 'user.user_id = blog.author_id')
+      .where('blog.nanoid = :nanoid', { nanoid: id })
+      .andWhere('blog.unuse = :unuse', { unuse: 0 })
+      .getOne();
+  }
+
+  async selectBlogsCount(type?: BlogType) {
+    const sqlBuilder = this.blogsRepository
+      .createQueryBuilder('blog')
+      .select('count(blog.nanoid) as count')
+      .where('blog.unuse = :unuse', { unuse: 0 })
+      .andWhere('blog.audit = :audit', { audit: 0 });
+
+    const { count } = await (type
+      ? sqlBuilder
+          .andWhere('blog.type = :type', { type })
+          .getRawOne<{ count: number }>()
+      : sqlBuilder.getRawOne<{ count: number }>());
+
+    return count;
+  }
+
+  // 查看还有没有后续的博客
+  async hasNext({ ps, pn, type }: HandledParams) {
+    const current = ps * pn;
+    const total = await this.selectBlogsCount(type);
+    return current < total;
+  }
+
+  async findAll({ ps, pn }: HandledParams) {
+    const blogs = await this.selectAllBlogs(ps, pn);
+
+    return blogs;
   }
 
   async findOne(id: string) {
@@ -106,9 +108,7 @@ export class BlogsService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const [blog] = (await this.blogsRepository.query(this.findBlogByIdSql, [
-      id,
-    ])) as BlogEntity[];
+    const blog = await this.seleBlogById(id);
     return blog;
   }
 

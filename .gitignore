@@ -37,6 +37,9 @@ lerna-debug.log*
 # cache
 .*_cache
 
+# local
+*.local
+
 # config
 .env.develop
 .env.product

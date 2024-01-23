@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BlogsModule } from './blogs/blogs.module';
-import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     BlogsModule,
+    UsersModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
@@ -26,6 +28,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       autoLoadEntities: true,
       // synchronize: process.env.RUNNING_ENV === 'development',
     }),
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
