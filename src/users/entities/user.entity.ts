@@ -3,9 +3,12 @@ import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'users' })
 export class User {
+  // @OneToMany(() => Blog, (blog) => blog.author)
   @PrimaryColumn('varchar', { length: 32 })
-  @OneToMany(() => Blog, (blog) => blog.author_id)
   user_id: string;
+
+  @OneToMany(() => Blog, (blog) => blog.author)
+  blogs: Blog[];
 
   @Column('varchar', { length: 32 })
   user_name: string;

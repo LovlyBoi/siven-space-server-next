@@ -6,10 +6,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      transform: true,
+      transform: true, // 自动转换dto传入类型
     }),
   );
-  await app.listen(12345);
+
+  app.listen(process.env.APP_PORT);
 }
+
 bootstrap();
