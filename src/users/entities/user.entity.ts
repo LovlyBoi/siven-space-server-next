@@ -3,10 +3,10 @@ import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'users' })
 export class User {
-  // @OneToMany(() => Blog, (blog) => blog.author)
   @PrimaryColumn('varchar', { length: 32 })
   user_id: string;
 
+  // 指向Blogs关系，并不是真的一列
   @OneToMany(() => Blog, (blog) => blog.author)
   blogs: Blog[];
 

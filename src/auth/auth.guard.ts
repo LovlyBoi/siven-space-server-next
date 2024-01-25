@@ -11,20 +11,55 @@ import { token } from 'src/utils/token';
 export class AuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean | Promise<boolean> {
     const [req] = context.getArgs();
-    // req.query = Object.assign(req.query, { _userId: '123' });
-    // return true;
     const accessToken = req.headers.authorization;
     if (!accessToken) {
       throw new HttpException('未携带 token', HttpStatus.UNAUTHORIZED);
     }
-    const result = token.verifyToken(accessToken);
-    if (!result.isOk) {
-      throw new HttpException('token 失效', HttpStatus.UNAUTHORIZED);
+    const [isOk, payloadOrError] = token.verifyToken(accessToken);
+    if (!isOk) {
+      console.log(payloadOrError);
+      this.handleJWTError(payloadOrError);
     } else {
       // 成功
-      req.query = Object.assign(req.query, { _userId: '123' });
-      // req.query = Object.assign(req.query, { _userId: result.payload?.aud });
+      req.query = Object.assign(req.query, { _tokenInfo: payloadOrError });
       return true;
+    }
+  }
+
+  // 处理token错误
+  handleJWTError(error: Error): never {
+    const { message } = error;
+
+    if (message === 'invalid token') {
+      throw new HttpException(
+        'The header or payload could not be parsed.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    } else if (message === 'jwt expired') {
+      throw new HttpException(
+        'The token has expired.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    } else if (message === 'invalid signature') {
+      throw new HttpException(
+        'The token signature is invalid.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    } else if (message === 'jwt malformed') {
+      throw new HttpException(
+        'The token is not a valid JWT format.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    } else if (message === 'jwt signature is required') {
+      throw new HttpException(
+        'The token is missing the signature.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    } else {
+      throw new HttpException(
+        'An unknown error occurred while parsing the token.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 }

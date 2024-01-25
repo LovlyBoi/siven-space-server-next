@@ -1,22 +1,21 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
   Param,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-// import { nanoid } from 'nanoid';
-
 import { BlogType, BlogTypeSet } from './dto/findBlogs.dto';
 import { BlogDto } from './dto/blogs.dto';
 import { PublishBlogDTO } from './dto/publishBlog.dto';
 import { BlogsService } from './blogs.service';
-import { toNumber } from 'src/utils';
-import { Blog } from './entities/blog.entity';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('blogs')
 export class BlogsController {
@@ -38,6 +37,8 @@ export class BlogsController {
     @Query('type') type?: BlogType,
     @Query('ps') ps?: number,
     @Query('pn') pn?: number,
+    @Query('author') authorId?: string,
+    @Query('audit') audit?: boolean,
   ) {
     // 检查type
     if (!type) type = 'all';
@@ -50,17 +51,17 @@ export class BlogsController {
     }
 
     const param = {
-      ps: ps,
-      pn: pn,
+      ps: Number.isNaN(ps) ? undefined : ps,
+      pn: Number.isNaN(pn) ? undefined : pn,
       type: type as BlogType,
+      authorId,
+      audit,
     };
 
     const [blogs, hasNext] = await Promise.all([
       this.blogsService.selectAllBlogs(param),
       this.blogsService.hasNext(param),
     ]);
-
-    console.log(blogs, hasNext);
 
     return {
       cards: blogs.map((b) => BlogDto.fromBlogEntity(b)),
@@ -104,52 +105,13 @@ export class BlogsController {
     return this.blogsService.getBlogMarkdown(id);
   }
 
-  // 获取作者发布的文章
-  @Get('/author/:authorId')
-  async getBlogsByAuthor(
-    @Param('authorId') authorId: string,
-    @Query('ps') ps?: string,
-    @Query('pn') pn?: string,
-  ) {
-    if (authorId == null || authorId === '') {
-      throw this.noParamException('authorId');
-    }
-
-    let cards: Blog[], hasNext: boolean;
-
-    if (!ps || !pn) {
-      cards = await this.blogsService.selectBlogsByAuthor(authorId);
-      hasNext = false;
-    } else {
-      const [blogs, _hasNext] = await Promise.all([
-        this.blogsService.selectBlogsByAuthor(
-          authorId,
-          toNumber(ps),
-          toNumber(pn),
-        ),
-        this.blogsService.hasNext({
-          ps: toNumber(ps),
-          pn: toNumber(pn),
-        }),
-      ]);
-      cards = blogs;
-      hasNext = _hasNext;
-    }
-
-    return {
-      cards: cards.map((b) => BlogDto.fromBlogEntity(b)),
-      hasNext,
-    };
-  }
-
   // 发布博客
   @Put('/')
   async publishBlog(@Body() blog: PublishBlogDTO) {
     const b = {
       id: blog.id,
       author: blog.author,
-      type: 1,
-      // type: blog.type,
+      type: blog.type,
       tag: blog.tag,
       title: blog.title,
       pictutres: blog.pictures.join(' '),
@@ -157,5 +119,16 @@ export class BlogsController {
 
     await this.blogsService.addBlog(b);
     return '发布成功';
+  }
+
+  // 删除博客
+  @Delete('/:id')
+  @UseGuards(AuthGuard)
+  async deleteBlog(
+    @Param('id') blogId: string,
+    @Query('_tokenInfo') tokenInfo,
+  ) {
+    await this.blogsService.deleteBlog(blogId, tokenInfo);
+    return '删除成功';
   }
 }

@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Injectable,
   StreamableFile,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,16 +13,18 @@ import { BlogType } from './dto/findBlogs.dto';
 import { User } from 'src/users/entities/user.entity';
 
 type HandledParams = {
-  ps: number;
-  pn: number;
-  type?: BlogType;
+  ps?: number;
+  pn?: number;
+  type: BlogType;
+  authorId?: string;
+  audit?: boolean;
 };
 
 // 发布博客 service 使用的参数类型
 type PublishBlogParam = {
   id: string;
   author: string;
-  type: number;
+  type: string;
   tag: {
     name: string;
     color: string;
@@ -44,6 +47,8 @@ export class BlogsService {
     'blog.update_date',
   ];
 
+  private readonly logger = new Logger(BlogsService.name);
+
   // 查询全部Blog
   constructor(
     @InjectRepository(Blog)
@@ -51,36 +56,39 @@ export class BlogsService {
   ) {}
 
   // 查询所有博客数据
-  selectAllBlogs({ ps, pn }: HandledParams) {
-    const queryBuilder = this.blogsRepository
+  async selectAllBlogs({ ps, pn, type, authorId, audit }: HandledParams) {
+    let queryBuilder = this.blogsRepository
       .createQueryBuilder('blog')
       .select(this.blogSelector)
       .innerJoinAndSelect('blog.author', 'user')
-      .where('blog.unuse = :unuse', { unuse: 0 })
-      .andWhere('blog.audit = :audit', { audit: 0 })
-      .orderBy('blog.update_date', 'DESC');
+      .where('blog.unuse = :unuse', { unuse: 0 });
 
-    if (!ps || !pn) {
-      return queryBuilder.getMany();
-    } else {
-      return queryBuilder.limit(ps).offset(pn).getMany();
+    if (type !== 'all') {
+      // 查的不是全部，指定类型
+      queryBuilder = queryBuilder.andWhere('blog.type = :type', { type });
     }
-  }
 
-  // 查询某个作者的所有博客数据
-  selectBlogsByAuthor(authorId: string, ps?: number, pn?: number) {
-    const queryBuilder = this.blogsRepository
-      .createQueryBuilder('blog')
-      .select(this.blogSelector)
-      .innerJoinAndSelect('blog.author', 'user')
-      .where('blog.unuse = :unuse', { unuse: 0 })
-      .andWhere('blog.author = :authorId', { authorId })
-      .orderBy('update_date', 'DESC');
+    if (authorId) {
+      queryBuilder = queryBuilder.andWhere('blog.author = :authorId', {
+        authorId,
+      });
+    }
 
-    if (!ps || !pn) {
+    if (audit != null) {
+      queryBuilder = queryBuilder.andWhere('blog.audit = :audit', {
+        audit: audit ? 1 : 0,
+      });
+    }
+
+    queryBuilder = queryBuilder.orderBy('blog.update_date', 'DESC');
+
+    if (ps == null || pn == null || ps < 1 || pn < 1) {
       return queryBuilder.getMany();
     } else {
-      return queryBuilder.limit(ps).offset(pn).getMany();
+      return queryBuilder
+        .limit(ps)
+        .offset(pn - 1)
+        .getMany();
     }
   }
 
@@ -156,8 +164,8 @@ export class BlogsService {
 
     if (existed) {
       throw new HttpException(
-        `This Blog id already exist.`,
-        HttpStatus.BAD_REQUEST,
+        'The blog id already exists.',
+        HttpStatus.NOT_ACCEPTABLE,
       );
     }
 
@@ -176,6 +184,32 @@ export class BlogsService {
           pics: blog.pictutres,
         },
       ])
+      .execute();
+  }
+
+  // 删除博客
+  async deleteBlog(blogId: string, tokenInfo: any) {
+    const blog = await this.selectBlogById(blogId);
+
+    if (!blog) {
+      // 没有这篇文章
+      throw new HttpException(
+        "The blog id doesn't exist.",
+        HttpStatus.NOT_ACCEPTABLE,
+      );
+    } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
+      // 不是超管，也不是文章作者
+      throw new HttpException(
+        'You are not the author of this blog.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return this.blogsRepository
+      .createQueryBuilder()
+      .update(Blog)
+      .set({ unuse: 1 })
+      .where('nanoid = :id', { id: blogId })
       .execute();
   }
 }
