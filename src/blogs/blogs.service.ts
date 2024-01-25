@@ -7,10 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { getHtmlById, getMarkdown } from './utils';
+import { getHtmlById, getMarkdown, removeCache } from './utils';
 import { Blog } from './entities/blog.entity';
 import { BlogType } from './dto/findBlogs.dto';
 import { User } from 'src/users/entities/user.entity';
+import { TokenInfo } from './types';
 
 type HandledParams = {
   ps?: number;
@@ -146,21 +147,10 @@ export class BlogsService {
     };
   }
 
-  // nanoid 是否存在
-  async isBlogExist(id: string) {
-    const result = await this.blogsRepository
-      .createQueryBuilder('blog')
-      .select(['blog.nanoid'])
-      .where('blog.nanoid = :id', { id })
-      .andWhere('blog.unuse = :unuse', { unuse: 0 })
-      .getOne();
-    return !!result;
-  }
-
   // 添加新博客
   async addBlog(blog: PublishBlogParam) {
     // 先看一下有没有该id
-    const existed = await this.isBlogExist(blog.id);
+    const existed = await this.selectBlogById(blog.id);
 
     if (existed) {
       throw new HttpException(
@@ -187,23 +177,27 @@ export class BlogsService {
       .execute();
   }
 
-  // 删除博客
-  async deleteBlog(blogId: string, tokenInfo: any) {
+  async checkBlogExistAndAuthorId(blogId: string, tokenInfo: TokenInfo) {
+    console.log(tokenInfo);
     const blog = await this.selectBlogById(blogId);
 
-    if (!blog) {
-      // 没有这篇文章
+    if (blog == null) {
       throw new HttpException(
-        "The blog id doesn't exist.",
-        HttpStatus.NOT_ACCEPTABLE,
+        `Can not get blog \`${blogId}\``,
+        HttpStatus.NOT_FOUND,
       );
     } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
-      // 不是超管，也不是文章作者
       throw new HttpException(
         'You are not the author of this blog.',
         HttpStatus.FORBIDDEN,
       );
     }
+  }
+
+  // 删除博客
+  async deleteBlog(blogId: string) {
+    // 移除相关的缓存文件(但不移除markdown文件)
+    removeCache(blogId);
 
     return this.blogsRepository
       .createQueryBuilder()

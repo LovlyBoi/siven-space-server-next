@@ -16,6 +16,7 @@ import { BlogDto } from './dto/blogs.dto';
 import { PublishBlogDTO } from './dto/publishBlog.dto';
 import { BlogsService } from './blogs.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { TokenInfo } from './types';
 
 @Controller('blogs')
 export class BlogsController {
@@ -90,19 +91,32 @@ export class BlogsController {
 
   // 获取博客正文
   @Get('/markdown/:id')
-  async getBlogMarkdown(@Param('id') id: string) {
-    if (id == null || id === '') {
+  @UseGuards(AuthGuard)
+  async getBlogMarkdown(
+    @Param('id') blogId: string,
+    @Query('_tokenInfo') tokenInfo,
+  ) {
+    if (blogId == null || blogId === '') {
       throw this.noParamException('id');
     }
     // 查看有没有博客信息
-    const blog = await this.blogsService.selectBlogById(id);
-    if (blog == null) {
-      throw new HttpException(
-        `Can not get blog \`${id}\``,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    return this.blogsService.getBlogMarkdown(id);
+    // const blog = await this.blogsService.selectBlogById(id);
+
+    // if (blog == null) {
+    //   throw new HttpException(
+    //     `Can not get blog \`${id}\``,
+    //     HttpStatus.NOT_FOUND,
+    //   );
+    // } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
+    //   throw new HttpException(
+    //     'You are not the author of this blog.',
+    //     HttpStatus.FORBIDDEN,
+    //   );
+    // }
+
+    await this.blogsService.checkBlogExistAndAuthorId(blogId, tokenInfo);
+
+    return this.blogsService.getBlogMarkdown(blogId);
   }
 
   // 发布博客
@@ -126,9 +140,26 @@ export class BlogsController {
   @UseGuards(AuthGuard)
   async deleteBlog(
     @Param('id') blogId: string,
-    @Query('_tokenInfo') tokenInfo,
+    @Query('_tokenInfo') tokenInfo: TokenInfo,
   ) {
-    await this.blogsService.deleteBlog(blogId, tokenInfo);
+    // const blog = await this.blogsService.selectBlogById(blogId);
+
+    // if (!blog) {
+    //   // 没有这篇文章
+    //   throw new HttpException(
+    //     "The blog id doesn't exist.",
+    //     HttpStatus.NOT_ACCEPTABLE,
+    //   );
+    // } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
+    //   // 不是超管，也不是文章作者
+    //   throw new HttpException(
+    //     'You are not the author of this blog.',
+    //     HttpStatus.FORBIDDEN,
+    //   );
+    // }
+    await this.blogsService.checkBlogExistAndAuthorId(blogId, tokenInfo);
+
+    await this.blogsService.deleteBlog(blogId);
     return '删除成功';
   }
 }

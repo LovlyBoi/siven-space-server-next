@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpException,
+  HttpStatus,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/createUser.dto';
 
@@ -16,5 +23,23 @@ export class UsersController {
   @Post('/login')
   async register(@Body() userInfo: CreateUserDto) {
     return this.usersService.userLogin(userInfo);
+  }
+
+  // 刷新token
+  @Post('/refresh')
+  async refreshToken(@Body('refreshToken') refreshToken: string) {
+    const [ok, payloadOrError] =
+      this.usersService.checkRefreshToken(refreshToken);
+
+    if (ok) {
+      return this.usersService.generateToken({
+        id: payloadOrError.id,
+        username: payloadOrError.username,
+        role: payloadOrError.role,
+      });
+    } else {
+      console.log(payloadOrError);
+      throw new HttpException('Token is expried.', HttpStatus.FORBIDDEN);
+    }
   }
 }

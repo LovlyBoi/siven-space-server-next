@@ -18,7 +18,7 @@ export class AuthGuard implements CanActivate {
     const [isOk, payloadOrError] = token.verifyToken(accessToken);
     if (!isOk) {
       console.log(payloadOrError);
-      this.handleJWTError(payloadOrError);
+      AuthGuard.handleJWTError(payloadOrError);
     } else {
       // 成功
       req.query = Object.assign(req.query, { _tokenInfo: payloadOrError });
@@ -27,7 +27,7 @@ export class AuthGuard implements CanActivate {
   }
 
   // 处理token错误
-  handleJWTError(error: Error): never {
+  static handleJWTError(error: Error): never {
     const { message } = error;
 
     if (message === 'invalid token') {

@@ -3,9 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { nanoid } from 'nanoid';
 import { User } from 'src/users/entities/user.entity';
-import { UserInfoDto } from './dto/userInfo.dto';
 import { hash, compare } from 'src/utils/bcrypt';
 import { token } from 'src/utils/token';
+// import { AuthGuard } from 'src/auth/auth.guard';
 
 type UserInfo = {
   username: string;
@@ -145,7 +145,11 @@ export class UsersService {
 
   // 使用userinfo生成token
   async withToken(user: User) {
-    const userInfo = UserInfoDto.fromUserEntity(user);
+    const userInfo = {
+      id: user.user_id,
+      username: user.user_name,
+      role: user.role,
+    };
 
     return {
       userInfo,
@@ -181,5 +185,10 @@ export class UsersService {
       { ...userInfo, type: 'refresh' },
       Math.floor(Date.now() / 1000) + 60 * 60 * expHour,
     );
+  }
+
+  // 检查refreshToken
+  checkRefreshToken(refreshToken: string) {
+    return token.verifyToken(refreshToken);
   }
 }
