@@ -43,6 +43,9 @@ type PublishBlogParam = {
   pictutres: string;
 };
 
+// 更新博客信息，不需要id和作者
+type UpdateBlogParam = Omit<PublishBlogParam, 'id' | 'author'>;
+
 @Injectable()
 export class BlogsService {
   blogSelector = [
@@ -223,6 +226,42 @@ export class BlogsService {
     this.logger.log(`Delete blog ${blogId}`);
 
     return result;
+  }
+
+  // 更新博客信息
+  async updateBlog(blogId: string, blog: UpdateBlogParam) {
+    const result = await this.blogsRepository
+      .createQueryBuilder()
+      .update(Blog)
+      .set({
+        type: blog.type,
+        title: blog.title,
+        pics: blog.pictutres,
+        tag_name: blog.tag.name,
+        tag_color: blog.tag.color,
+        // 需要重新审核
+        audit: 1,
+        update_date: () => 'CURRENT_TIMESTAMP',
+      })
+      .where('nanoid = :id', { id: blogId })
+      .execute();
+
+    this.logger.log(`Update blog ${blogId}`);
+
+    return result;
+  }
+
+  // 更新博客更新时间，并重新提交审核
+  async updateBlogUpdateDate(blogId: string) {
+    return await this.blogsRepository
+      .createQueryBuilder()
+      .update(Blog)
+      .set({
+        audit: 1,
+        update_date: () => 'CURRENT_TIMESTAMP',
+      })
+      .where('nanoid = :id', { id: blogId })
+      .execute();
   }
 
   // 存储Markdown原文

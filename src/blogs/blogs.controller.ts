@@ -23,6 +23,7 @@ import { BlogsService } from './blogs.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuditBlogDTO } from './dto/auditBlog.dto';
+import { UpdateBlogDTO } from './dto/updateBlog.dto';
 
 @Controller('blogs')
 export class BlogsController {
@@ -123,7 +124,10 @@ export class BlogsController {
       id: blog.id,
       author: blog.author,
       type: blog.type,
-      tag: blog.tag,
+      tag: {
+        name: blog.tagName,
+        color: blog.tagColor,
+      },
       title: blog.title,
       pictutres: blog.pictures.join(' '),
     };
@@ -140,6 +144,28 @@ export class BlogsController {
 
     await this.blogsService.deleteBlog(blogId);
     return '删除成功';
+  }
+
+  // 更新博客信息
+  @Patch('/:id')
+  @UseGuards(AuthGuard)
+  async updateBlog(
+    @Param('id') blogId: string,
+    @Req() { user: tokenInfo },
+    @Body() blog: UpdateBlogDTO,
+  ) {
+    await this.blogsService.checkBlogInfoExistAndAuthorId(blogId, tokenInfo);
+
+    await this.blogsService.updateBlog(blogId, {
+      type: blog.type,
+      tag: {
+        name: blog.tagName,
+        color: blog.tagColor,
+      },
+      title: blog.title,
+      pictutres: blog.pictures.join(' '),
+    });
+    return '更新成功';
   }
 
   // 上传Markdown原文
@@ -192,6 +218,8 @@ export class BlogsController {
 
     await this.blogsService.deleteMarkdown(blogId);
     await this.blogsService.storeMarkdown(file, blogId);
+    // 更新博客编辑时间（不需要等他完成）
+    this.blogsService.updateBlogUpdateDate(blogId);
 
     return { id: blogId };
   }
