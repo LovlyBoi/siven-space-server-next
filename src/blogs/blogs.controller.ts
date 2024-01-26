@@ -3,12 +3,16 @@ import {
   Controller,
   Delete,
   Get,
+  Post,
   HttpException,
   HttpStatus,
   Param,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BlogType, BlogTypeSet } from './dto/findBlogs.dto';
@@ -16,7 +20,8 @@ import { BlogDto } from './dto/blogs.dto';
 import { PublishBlogDTO } from './dto/publishBlog.dto';
 import { BlogsService } from './blogs.service';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { TokenInfo } from './types';
+// import { TokenInfo } from './types';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('blogs')
 export class BlogsController {
@@ -94,27 +99,13 @@ export class BlogsController {
   @UseGuards(AuthGuard)
   async getBlogMarkdown(
     @Param('id') blogId: string,
-    @Query('_tokenInfo') tokenInfo,
+    @Req() { user: tokenInfo },
   ) {
     if (blogId == null || blogId === '') {
       throw this.noParamException('id');
     }
-    // 查看有没有博客信息
-    // const blog = await this.blogsService.selectBlogById(id);
 
-    // if (blog == null) {
-    //   throw new HttpException(
-    //     `Can not get blog \`${id}\``,
-    //     HttpStatus.NOT_FOUND,
-    //   );
-    // } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
-    //   throw new HttpException(
-    //     'You are not the author of this blog.',
-    //     HttpStatus.FORBIDDEN,
-    //   );
-    // }
-
-    await this.blogsService.checkBlogExistAndAuthorId(blogId, tokenInfo);
+    await this.blogsService.checkBlogInfoExistAndAuthorId(blogId, tokenInfo);
 
     return this.blogsService.getBlogMarkdown(blogId);
   }
@@ -138,28 +129,64 @@ export class BlogsController {
   // 删除博客
   @Delete('/:id')
   @UseGuards(AuthGuard)
-  async deleteBlog(
-    @Param('id') blogId: string,
-    @Query('_tokenInfo') tokenInfo: TokenInfo,
-  ) {
-    // const blog = await this.blogsService.selectBlogById(blogId);
-
-    // if (!blog) {
-    //   // 没有这篇文章
-    //   throw new HttpException(
-    //     "The blog id doesn't exist.",
-    //     HttpStatus.NOT_ACCEPTABLE,
-    //   );
-    // } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
-    //   // 不是超管，也不是文章作者
-    //   throw new HttpException(
-    //     'You are not the author of this blog.',
-    //     HttpStatus.FORBIDDEN,
-    //   );
-    // }
-    await this.blogsService.checkBlogExistAndAuthorId(blogId, tokenInfo);
+  async deleteBlog(@Param('id') blogId: string, @Req() { user: tokenInfo }) {
+    await this.blogsService.checkBlogInfoExistAndAuthorId(blogId, tokenInfo);
 
     await this.blogsService.deleteBlog(blogId);
     return '删除成功';
+  }
+
+  // 上传Markdown原文
+  @Post('/upload')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async storeMarkdown(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new HttpException('上传失败', HttpStatus.BAD_REQUEST);
+    } else if (file.mimetype !== 'text/markdown') {
+      throw new HttpException(
+        'The mime type must be markdown.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const id = await this.blogsService.storeMarkdown(file);
+    return { id };
+  }
+
+  // Markdown原文重新上传（更新）
+  @Post('upload/:id')
+  @UseInterceptors(FileInterceptor('file'))
+  @UseGuards(AuthGuard)
+  async updateStoreMarkdown(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('id') blogId: string,
+    @Req() { user: tokenInfo },
+  ) {
+    const blogInfo = await this.blogsService.selectBlogById(blogId);
+
+    const { id, role } = tokenInfo;
+
+    if (!blogInfo) {
+      // 数据库里没有博客信息
+      throw new HttpException('The blog does not exist.', HttpStatus.NOT_FOUND);
+    } else if (blogInfo.author.user_id !== id && role !== 2) {
+      // 不是作者，也不是超管
+      throw new HttpException(
+        'You are not the author of this blog.',
+        HttpStatus.FORBIDDEN,
+      );
+    } else if (!this.blogsService.isMarkdownExist(blogId)) {
+      // 缓存里面没有Markdown原文
+      throw new HttpException(
+        'The markdown file does not exist.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    await this.blogsService.deleteMarkdown(blogId);
+    await this.blogsService.storeMarkdown(file, blogId);
+
+    return { id: blogId };
   }
 }

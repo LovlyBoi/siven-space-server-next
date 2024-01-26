@@ -7,11 +7,19 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { getHtmlById, getMarkdown, removeCache } from './utils';
+import {
+  getHtmlById,
+  getMarkdown,
+  removeCache,
+  writeMarkdown,
+  isMarkDownExist as isMarkDownExistUtil,
+  removeMarkdown,
+} from './utils';
 import { Blog } from './entities/blog.entity';
 import { BlogType } from './dto/findBlogs.dto';
 import { User } from 'src/users/entities/user.entity';
 import { TokenInfo } from './types';
+import { nanoid } from 'nanoid';
 
 type HandledParams = {
   ps?: number;
@@ -94,12 +102,12 @@ export class BlogsService {
   }
 
   // 查找某个博客信息
-  selectBlogById(id: string) {
+  selectBlogById(blogId: string) {
     return this.blogsRepository
       .createQueryBuilder('blog')
       .select(this.blogSelector)
       .innerJoinAndSelect('blog.author', 'user')
-      .where('blog.nanoid = :nanoid', { nanoid: id })
+      .where('blog.nanoid = :nanoid', { nanoid: blogId })
       .andWhere('blog.unuse = :unuse', { unuse: 0 })
       .getOne();
   }
@@ -129,19 +137,19 @@ export class BlogsService {
   }
 
   // 获取博客markdown
-  async getBlogMarkdown(id: string): Promise<StreamableFile> {
-    const stream = getMarkdown(id);
+  async getBlogMarkdown(blogId: string): Promise<StreamableFile> {
+    const stream = getMarkdown(blogId);
     if (!stream)
       throw new HttpException(
-        `Can not get file ${id}.`,
+        `Can not get file ${blogId}.`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     return new StreamableFile(stream);
   }
 
   // 获取博客html
-  async getBlogHtml(id: string) {
-    const parsed = await getHtmlById(id);
+  async getBlogHtml(blogId: string) {
+    const parsed = await getHtmlById(blogId);
     return {
       parsed,
     };
@@ -159,7 +167,7 @@ export class BlogsService {
       );
     }
 
-    return this.blogsRepository
+    const result = await this.blogsRepository
       .createQueryBuilder()
       .insert()
       .into(Blog)
@@ -175,10 +183,13 @@ export class BlogsService {
         },
       ])
       .execute();
+
+    this.logger.log(`Added new blog info, id ${blog.id}`);
+
+    return result;
   }
 
-  async checkBlogExistAndAuthorId(blogId: string, tokenInfo: TokenInfo) {
-    console.log(tokenInfo);
+  async checkBlogInfoExistAndAuthorId(blogId: string, tokenInfo: TokenInfo) {
     const blog = await this.selectBlogById(blogId);
 
     if (blog == null) {
@@ -197,13 +208,45 @@ export class BlogsService {
   // 删除博客
   async deleteBlog(blogId: string) {
     // 移除相关的缓存文件(但不移除markdown文件)
-    removeCache(blogId);
+    this.removeMarkdownCache(blogId);
 
-    return this.blogsRepository
+    const result = await this.blogsRepository
       .createQueryBuilder()
       .update(Blog)
       .set({ unuse: 1 })
       .where('nanoid = :id', { id: blogId })
       .execute();
+
+    this.logger.log(`Delete blog ${blogId}`);
+
+    return result;
+  }
+
+  // 存储Markdown原文
+  async storeMarkdown(file: Express.Multer.File, blogId = nanoid()) {
+    await writeMarkdown(blogId, file);
+
+    this.logger.log(
+      `Store markdown file ${blogId}, originalName ${file.originalname}`,
+    );
+
+    return blogId;
+  }
+
+  // 判断Markdown原文是否存在
+  isMarkdownExist(blogId: string) {
+    return isMarkDownExistUtil(blogId);
+  }
+
+  // 删除Markdown原文（只有重新上传的时候会删除原文）
+  deleteMarkdown(blogId: string) {
+    this.removeMarkdownCache(blogId);
+
+    return removeMarkdown(blogId);
+  }
+
+  // 移除Markdown缓存（HTML、Outline）
+  removeMarkdownCache(blogId: string) {
+    return removeCache(blogId);
   }
 }

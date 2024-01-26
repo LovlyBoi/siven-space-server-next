@@ -39,7 +39,10 @@ export class UsersController {
       });
     } else {
       console.log(payloadOrError);
-      throw new HttpException('Token is expried.', HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        'The token cannot be resolved or the token has expired.',
+        HttpStatus.FORBIDDEN,
+      );
     }
   }
 }

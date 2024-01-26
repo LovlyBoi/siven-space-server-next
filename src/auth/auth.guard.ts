@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { TokenInfo } from 'src/blogs/types';
 import { token } from 'src/utils/token';
 
 @Injectable()
@@ -19,9 +20,12 @@ export class AuthGuard implements CanActivate {
     if (!isOk) {
       console.log(payloadOrError);
       AuthGuard.handleJWTError(payloadOrError);
+    } else if (payloadOrError.type !== 'access') {
+      // 不是accesstoken
+      throw new HttpException('必须使用 access token', HttpStatus.UNAUTHORIZED);
     } else {
       // 成功
-      req.query = Object.assign(req.query, { _tokenInfo: payloadOrError });
+      req.user = payloadOrError as TokenInfo;
       return true;
     }
   }

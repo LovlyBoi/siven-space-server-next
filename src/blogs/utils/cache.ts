@@ -36,6 +36,11 @@ export function cacheInit(cacheDir?: string): string {
   return cacheDir;
 }
 
+// 存储Markdown
+export async function writeMarkdown(id: string, md: Express.Multer.File) {
+  return writeFile(resolve(cacheMarkdownPath, id), md.buffer);
+}
+
 // 获取解析后的HTML
 export async function getHtmlById(id: string): Promise<ParsedHtml> {
   // 之前解析过了，走缓存
@@ -52,8 +57,8 @@ export async function getHtmlById(id: string): Promise<ParsedHtml> {
   return parsed;
 }
 
-// 移除Markdown缓存
-export async function removeMarkdownCache(id: string) {
+// 移除Markdown
+export async function removeMarkdown(id: string) {
   let success = true;
   // 删除 markdown
   try {
@@ -61,11 +66,6 @@ export async function removeMarkdownCache(id: string) {
   } catch (e) {
     success = false;
   }
-  // 删除 html和outline
-  try {
-    await unlink(resolve(cacheHtmlPath, id));
-    await unlink(resolve(cahceOutlinePath, id));
-  } catch (e) {}
   return success;
 }
 
