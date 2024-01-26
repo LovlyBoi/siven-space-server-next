@@ -18,7 +18,6 @@ export class AuthGuard implements CanActivate {
     }
     const [isOk, payloadOrError] = token.verifyToken(accessToken);
     if (!isOk) {
-      console.log(payloadOrError);
       AuthGuard.handleJWTError(payloadOrError);
     } else if (payloadOrError.type !== 'access') {
       // 不是accesstoken

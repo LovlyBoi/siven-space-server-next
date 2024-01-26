@@ -1,5 +1,13 @@
-import { User } from '../../users/entities/user.entity';
-import { Column, Entity, ManyToOne, PrimaryColumn, JoinColumn } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+import { Audit } from './audit.entity';
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  PrimaryColumn,
+  JoinColumn,
+  OneToOne,
+} from 'typeorm';
 
 @Entity({ name: 'blogs' })
 export class Blog {
@@ -42,4 +50,8 @@ export class Blog {
 
   @Column('varchar', { length: 32 })
   audit_id: string;
+
+  @OneToOne(() => Audit, (audit) => audit.blog)
+  @JoinColumn({ name: 'audit_id' })
+  auditRecord: Audit;
 }

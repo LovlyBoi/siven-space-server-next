@@ -1,6 +1,5 @@
 import { Type } from 'class-transformer';
 import { IsString, ValidateNested } from 'class-validator';
-// import { BlogDto } from './blogs.dto';
 
 export class Tag {
   @IsString()
@@ -30,8 +29,4 @@ export class PublishBlogDTO {
 
   @IsString({ each: true })
   pictures: string[];
-
-  // static toBlogDTO(id: string) {
-  //   return new BlogDto(id, this.author, this.tag, this.title, this.pictures);
-  // }
 }

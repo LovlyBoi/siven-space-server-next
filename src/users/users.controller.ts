@@ -7,7 +7,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/createUser.dto';
+import { CreateUserDTO } from './dto/createUser.dto';
 
 @Controller('user')
 export class UsersController {
@@ -15,13 +15,13 @@ export class UsersController {
 
   // 用户注册
   @Put('/')
-  async create(@Body() userInfo: CreateUserDto) {
+  async create(@Body() userInfo: CreateUserDTO) {
     return this.usersService.createUser(userInfo);
   }
 
   // 用户登录
   @Post('/login')
-  async register(@Body() userInfo: CreateUserDto) {
+  async register(@Body() userInfo: CreateUserDTO) {
     return this.usersService.userLogin(userInfo);
   }
 

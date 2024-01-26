@@ -1,6 +1,6 @@
 import { User } from '../entities/user.entity';
 
-export class UserInfoDto {
+export class UserInfoDTO {
   id: string;
   username: string;
   role: number;
@@ -22,7 +22,7 @@ export class UserInfoDto {
   }
 
   static fromUserEntity(user: User) {
-    return new UserInfoDto(
+    return new UserInfoDTO(
       user.user_id,
       user.user_name,
       user.role,

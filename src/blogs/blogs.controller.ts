@@ -13,15 +13,16 @@ import {
   UseGuards,
   UseInterceptors,
   Req,
+  Patch,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BlogType, BlogTypeSet } from './dto/findBlogs.dto';
-import { BlogDto } from './dto/blogs.dto';
+import { BlogDTO } from './dto/blogs.dto';
 import { PublishBlogDTO } from './dto/publishBlog.dto';
 import { BlogsService } from './blogs.service';
 import { AuthGuard } from 'src/auth/auth.guard';
-// import { TokenInfo } from './types';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuditBlogDTO } from './dto/auditBlog.dto';
 
 @Controller('blogs')
 export class BlogsController {
@@ -44,7 +45,16 @@ export class BlogsController {
     @Query('ps') ps?: number,
     @Query('pn') pn?: number,
     @Query('author') authorId?: string,
-    @Query('audit') audit?: boolean,
+  ) {
+    return this.selectAllBlogs(ps, pn, type, authorId, false);
+  }
+
+  async selectAllBlogs(
+    ps?: number,
+    pn?: number,
+    type?: BlogType,
+    authorId?: string,
+    audit = false,
   ) {
     // 检查type
     if (!type) type = 'all';
@@ -70,7 +80,7 @@ export class BlogsController {
     ]);
 
     return {
-      cards: blogs.map((b) => BlogDto.fromBlogEntity(b)),
+      cards: blogs.map((b) => BlogDTO.fromBlogEntity(b)),
       hasNext,
     };
   }
@@ -78,9 +88,7 @@ export class BlogsController {
   // 获取博客正文
   @Get('/html/:id')
   async getBlogHtml(@Param('id') id: string) {
-    if (id == null || id === '') {
-      throw this.noParamException('id');
-    }
+    if (id == null || id === '') throw this.noParamException('id');
 
     // 查看有没有博客信息
     const [blogInfo, parsed] = await Promise.all([
@@ -101,9 +109,7 @@ export class BlogsController {
     @Param('id') blogId: string,
     @Req() { user: tokenInfo },
   ) {
-    if (blogId == null || blogId === '') {
-      throw this.noParamException('id');
-    }
+    if (blogId == null || blogId === '') throw this.noParamException('id');
 
     await this.blogsService.checkBlogInfoExistAndAuthorId(blogId, tokenInfo);
 
@@ -167,8 +173,8 @@ export class BlogsController {
 
     const { id, role } = tokenInfo;
 
+    // 数据库里没有博客信息
     if (!blogInfo) {
-      // 数据库里没有博客信息
       throw new HttpException('The blog does not exist.', HttpStatus.NOT_FOUND);
     } else if (blogInfo.author.user_id !== id && role !== 2) {
       // 不是作者，也不是超管
@@ -188,5 +194,49 @@ export class BlogsController {
     await this.blogsService.storeMarkdown(file, blogId);
 
     return { id: blogId };
+  }
+
+  // 获取待审核文章
+  @Get('/audit')
+  @UseGuards(AuthGuard)
+  async getAuditingBlogs(
+    @Req() { user: tokenInfo },
+    @Query('type') type?: BlogType,
+    @Query('ps') ps?: number,
+    @Query('pn') pn?: number,
+    @Query('author') authorId?: string,
+  ) {
+    const { role } = tokenInfo;
+
+    // 不是管理员
+    if (role !== 1 && role !== 2)
+      throw new HttpException('You are not an admin.', HttpStatus.FORBIDDEN);
+
+    return this.selectAllBlogs(ps, pn, type, authorId, true);
+  }
+
+  // 审核文章
+  @Patch('/audit/:id')
+  @UseGuards(AuthGuard)
+  async auditBlog(
+    @Req() { user: tokenInfo },
+    @Param('id') blogId: string,
+    @Body() { state, msg }: AuditBlogDTO,
+  ) {
+    const { role, id } = tokenInfo;
+
+    // 不是管理员
+    if (role !== 1 && role !== 2)
+      throw new HttpException('You are not an admin.', HttpStatus.FORBIDDEN);
+
+    const blog = await this.blogsService.selectBlogById(blogId);
+
+    if (!blog) {
+      // 没有博客
+      throw new HttpException('The blog does not exist.', HttpStatus.NOT_FOUND);
+    }
+
+    await this.blogsService.auditBlog(blogId, id, state, msg);
+    return 'ok';
   }
 }

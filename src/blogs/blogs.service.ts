@@ -20,6 +20,7 @@ import { BlogType } from './dto/findBlogs.dto';
 import { User } from 'src/users/entities/user.entity';
 import { TokenInfo } from './types';
 import { nanoid } from 'nanoid';
+import { Audit } from './entities/audit.entity';
 
 type HandledParams = {
   ps?: number;
@@ -62,6 +63,8 @@ export class BlogsService {
   constructor(
     @InjectRepository(Blog)
     private readonly blogsRepository: Repository<Blog>,
+    @InjectRepository(Audit)
+    private readonly auditRepository: Repository<Audit>,
   ) {}
 
   // 查询所有博客数据
@@ -248,5 +251,42 @@ export class BlogsService {
   // 移除Markdown缓存（HTML、Outline）
   removeMarkdownCache(blogId: string) {
     return removeCache(blogId);
+  }
+
+  // 审核文章
+  async auditBlog(
+    blogId: string,
+    managerId: string,
+    state: boolean,
+    msg?: string,
+  ) {
+    const auditId = await this.createAuditRecord(blogId, managerId, msg);
+    return this.blogsRepository
+      .createQueryBuilder()
+      .update(Blog)
+      .set({ audit_id: auditId, audit: state ? 0 : 1 })
+      .where('nanoid = :id', { id: blogId })
+      .execute();
+  }
+
+  // 创建审核记录
+  async createAuditRecord(blogId: string, managerId: string, msg = '') {
+    const auditId = nanoid();
+
+    await this.auditRepository
+      .createQueryBuilder()
+      .insert()
+      .into(Audit)
+      .values([
+        {
+          audit_id: auditId,
+          blog_id: blogId,
+          admin_id: managerId,
+          audit_msg: msg,
+        },
+      ])
+      .execute();
+
+    return auditId;
   }
 }

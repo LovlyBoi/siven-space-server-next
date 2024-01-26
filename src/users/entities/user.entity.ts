@@ -1,3 +1,4 @@
+import { Audit } from 'src/blogs/entities/audit.entity';
 import { Blog } from 'src/blogs/entities/blog.entity';
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 
@@ -9,6 +10,9 @@ export class User {
   // 指向Blogs关系，并不是真的一列
   @OneToMany(() => Blog, (blog) => blog.author)
   blogs: Blog[];
+
+  @OneToMany(() => Audit, (audit) => audit.admin)
+  audits: Audit[];
 
   @Column('varchar', { length: 32 })
   user_name: string;

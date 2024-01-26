@@ -1,6 +1,6 @@
 import { Blog } from '../entities/blog.entity';
 
-export class BlogDto {
+export class BlogDTO {
   id: string;
   author: string;
   tag: {
@@ -34,7 +34,7 @@ export class BlogDto {
   }
 
   static fromBlogEntity(blog: Blog) {
-    return new BlogDto(
+    return new BlogDTO(
       blog.nanoid,
       blog.author.user_name,
       {

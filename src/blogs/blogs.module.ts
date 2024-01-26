@@ -5,10 +5,11 @@ import { ConfigService } from '@nestjs/config';
 import { cacheInit } from './utils/index';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Blog } from './entities/blog.entity';
+import { Audit } from './entities/audit.entity';
 import { User } from 'src/users/entities/user.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Blog, User])],
+  imports: [TypeOrmModule.forFeature([Blog, Audit, User])],
   controllers: [BlogsController],
   providers: [BlogsService],
 })
