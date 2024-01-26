@@ -53,10 +53,12 @@ export class ImageService {
     let stream = getImageStream(filename) as Readable;
 
     if (quality != null) {
+      // 图片质量压缩
       stream = this.compress(stream, ext, quality);
     }
 
     if (width != null || height != null) {
+      // 图片尺寸压缩
       stream = this.resize(stream, width, height);
     }
 

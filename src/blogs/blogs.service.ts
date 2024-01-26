@@ -14,6 +14,7 @@ import {
   writeMarkdown,
   isMarkDownExist as isMarkDownExistUtil,
   removeMarkdown,
+  isMarkDownExist,
 } from 'src/utils';
 import { Blog } from './entities/blog.entity';
 import { BlogType } from './dto/findBlogs.dto';
@@ -155,6 +156,12 @@ export class BlogsService {
 
   // 获取博客html
   async getBlogHtml(blogId: string) {
+    if (!isMarkDownExist(blogId)) {
+      throw new HttpException(
+        'This Blog does not exist.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
     const parsed = await getHtmlById(blogId);
     return {
       parsed,
