@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, createReadStream } from 'fs';
+import { existsSync, mkdirSync, createReadStream, createWriteStream } from 'fs';
 import { readFile, writeFile, unlink } from 'fs/promises';
 import { resolve, isAbsolute } from 'path';
-import { parseMarkDown } from './markdown';
-import type { Outline, ParsedHtml } from '../types';
+import { parseMarkDown } from 'src/blogs/utils/markdown';
+import type { Outline, ParsedHtml } from 'src/blogs/types';
+import { Readable } from 'node:stream';
 
 export const useCacheLocation = (path?: string) =>
   path
@@ -67,6 +68,28 @@ export async function removeMarkdown(id: string) {
     success = false;
   }
   return success;
+}
+
+// 判断图片是否存在
+export function isImageExist(filename: string) {
+  return existsSync(resolve(cacheImagePath, filename));
+}
+
+// 存储Image
+export function cacheImage(filename: string, image: string | Buffer) {
+  return writeFile(resolve(cacheImagePath, filename), image);
+}
+
+// 存储Image（流）
+export function cacheImageStream(filename: string, stream: Readable) {
+  // return writeFileStream(resolve(cacheImagePath, filename), stream);
+  const writeStream = createWriteStream(resolve(cacheImagePath, filename));
+  stream.pipe(writeStream);
+}
+
+// 返回Image读流
+export function getImageStream(filename: string) {
+  return createReadStream(resolve(cacheImagePath, filename));
 }
 
 // 移除Image缓存

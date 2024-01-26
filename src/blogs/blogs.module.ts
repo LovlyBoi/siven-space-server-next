@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BlogsController } from './blogs.controller';
 import { BlogsService } from './blogs.service';
 import { ConfigService } from '@nestjs/config';
-import { cacheInit } from './utils/index';
+import { cacheInit } from 'src/utils/index';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Blog } from './entities/blog.entity';
 import { Audit } from './entities/audit.entity';

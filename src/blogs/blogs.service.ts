@@ -14,7 +14,7 @@ import {
   writeMarkdown,
   isMarkDownExist as isMarkDownExistUtil,
   removeMarkdown,
-} from './utils';
+} from 'src/utils';
 import { Blog } from './entities/blog.entity';
 import { BlogType } from './dto/findBlogs.dto';
 import { User } from 'src/users/entities/user.entity';
