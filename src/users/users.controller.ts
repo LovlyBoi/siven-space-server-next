@@ -14,6 +14,7 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDTO } from './dto/createUser.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { UserInfoDTO } from './dto/userInfo.dto';
 
 @Controller('user')
 export class UsersController {
@@ -29,6 +30,15 @@ export class UsersController {
   @Post('/login')
   async register(@Body() userInfo: CreateUserDTO) {
     return this.usersService.userLogin(userInfo);
+  }
+
+  // 获取用户信息
+  @Get('/')
+  @UseGuards(AuthGuard)
+  async getUserInfo(@Req() { user }) {
+    const { id } = user;
+    const userInfo = await this.usersService.getUserInfoById(id);
+    return UserInfoDTO.fromUserEntity(userInfo);
   }
 
   // 刷新token
@@ -61,7 +71,7 @@ export class UsersController {
       throw new HttpException('You are not a manager.', HttpStatus.FORBIDDEN);
     }
     const users = await this.usersService.searchUser(idOrName);
-    return users;
+    return users.map((u) => UserInfoDTO.fromUserEntity(u));
   }
 
   // 修改用户权限

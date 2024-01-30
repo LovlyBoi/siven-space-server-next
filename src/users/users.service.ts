@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { User } from 'src/users/entities/user.entity';
 import { hash, compare } from 'src/utils/bcrypt';
 import { token } from 'src/utils/token';
+import { UserInfoDTO } from './dto/userInfo.dto';
 // import { AuthGuard } from 'src/auth/auth.guard';
 
 type UserInfo = {
@@ -174,15 +175,15 @@ export class UsersService {
 
   // 使用userinfo生成token
   async withToken(user: User) {
-    const userInfo = {
+    const userInfoTokenPayload: UserInfoTokenPayload = {
       id: user.user_id,
       username: user.user_name,
       role: user.role,
     };
 
     return {
-      userInfo,
-      token: await this.generateToken(userInfo),
+      userInfo: UserInfoDTO.fromUserEntity(user),
+      token: await this.generateToken(userInfoTokenPayload),
     };
   }
 
@@ -201,7 +202,8 @@ export class UsersService {
   ) {
     return token.signToken(
       { ...userInfo, type: 'access' },
-      Math.floor(Date.now() / 1000) + 60 * 60 * expHour,
+      Math.floor(Date.now() / 1000) + 0 * expHour + 5,
+      // Math.floor(Date.now() / 1000) + 60 * 60 * expHour,
     );
   }
 
