@@ -210,7 +210,7 @@ export class BlogsService {
         `Can not get blog \`${blogId}\``,
         HttpStatus.NOT_FOUND,
       );
-    } else if (tokenInfo.role !== 2 && blog.author.user_id !== tokenInfo.id) {
+    } else if (tokenInfo.role !== 3 && blog.author.user_id !== tokenInfo.id) {
       throw new HttpException(
         'You are not the author of this blog.',
         HttpStatus.FORBIDDEN,

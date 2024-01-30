@@ -143,6 +143,35 @@ export class UsersService {
     return this.withToken(user);
   }
 
+  // 搜索用户
+  async searchUser(idOrName: string) {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.user_id',
+        'user.user_name',
+        'user.password',
+        'user.role',
+        'user.avatar',
+        'user.unuse',
+        'user.create_date',
+      ])
+      .where('user.user_name Like :idOrName', { idOrName: `%${idOrName}%` })
+      .orWhere('user.user_id Like :idOrName', { idOrName: `%${idOrName}%` })
+      .getMany();
+  }
+
+  // 修改用户权限
+  async updateUserRole(targetUserId: string, role: number) {
+    console.log(targetUserId, role);
+    return this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ role })
+      .where('user_id = :targetUserId', { targetUserId })
+      .execute();
+  }
+
   // 使用userinfo生成token
   async withToken(user: User) {
     const userInfo = {

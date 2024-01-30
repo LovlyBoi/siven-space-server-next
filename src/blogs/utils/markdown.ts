@@ -2,6 +2,8 @@ import { marked } from 'marked';
 import { gfmHeadingId, getHeadingList } from 'marked-gfm-heading-id';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
+import createDOMPurify = require('dompurify');
+import jsDom = require('jsdom');
 import type { ParsedHtml } from '../types';
 
 // 暂时保存outline
@@ -35,9 +37,14 @@ export async function parseMarkDown(
       ? markdownString
       : markdownString.toString();
 
-  const html = await marked.parse(markdownString, {
+  const dirtyHtml = await marked.parse(markdownString, {
     async: true,
   });
+
+  const window = new jsDom.JSDOM('').window;
+  const DOMPurify = createDOMPurify(window);
+
+  const html = DOMPurify.sanitize(dirtyHtml);
 
   const outline = [..._outline];
   _outline.length = 0;

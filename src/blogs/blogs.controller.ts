@@ -202,7 +202,7 @@ export class BlogsController {
     // 数据库里没有博客信息
     if (!blogInfo) {
       throw new HttpException('The blog does not exist.', HttpStatus.NOT_FOUND);
-    } else if (blogInfo.author.user_id !== id && role !== 2) {
+    } else if (blogInfo.author.user_id !== id && role !== 3) {
       // 不是作者，也不是超管
       throw new HttpException(
         'You are not the author of this blog.',
@@ -237,7 +237,7 @@ export class BlogsController {
     const { role } = tokenInfo;
 
     // 不是管理员
-    if (role !== 1 && role !== 2)
+    if (role !== 2 && role !== 3)
       throw new HttpException('You are not an admin.', HttpStatus.FORBIDDEN);
 
     return this.selectAllBlogs(ps, pn, type, authorId, true);
@@ -254,7 +254,7 @@ export class BlogsController {
     const { role, id } = tokenInfo;
 
     // 不是管理员
-    if (role !== 1 && role !== 2)
+    if (role !== 2 && role !== 3)
       throw new HttpException('You are not an admin.', HttpStatus.FORBIDDEN);
 
     const blog = await this.blogsService.selectBlogById(blogId);

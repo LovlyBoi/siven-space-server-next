@@ -43,3 +43,6 @@ lerna-debug.log*
 # config
 .env.develop
 .env.product
+
+# docker image
+*.tar
