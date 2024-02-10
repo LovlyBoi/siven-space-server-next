@@ -41,6 +41,7 @@ export class BlogsController {
 
   // 获取所有 Blog
   @Get()
+  @UseGuards(AuthGuard)
   async getBlogs(
     @Query('type') type?: BlogType,
     @Query('ps') ps?: number,
