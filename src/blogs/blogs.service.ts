@@ -8,13 +8,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
-  getHtmlById,
+  // getHtmlById,
   getMarkdown,
   removeCache,
   writeMarkdown,
   isMarkDownExist as isMarkDownExistUtil,
   removeMarkdown,
   isMarkDownExist,
+  getHtmlStreamById,
 } from 'src/utils';
 import { Blog } from './entities/blog.entity';
 import { BlogType } from './dto/findBlogs.dto';
@@ -162,10 +163,8 @@ export class BlogsService {
         HttpStatus.NOT_FOUND,
       );
     }
-    const parsed = await getHtmlById(blogId);
-    return {
-      parsed,
-    };
+
+    return getHtmlStreamById(blogId);
   }
 
   // 添加新博客

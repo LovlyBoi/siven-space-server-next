@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, createReadStream, createWriteStream } from 'fs';
 import { readFile, writeFile, unlink } from 'fs/promises';
 import { resolve, isAbsolute } from 'path';
-import { parseMarkDown } from 'src/blogs/utils/markdown';
-import type { Outline, ParsedHtml } from 'src/blogs/types';
-import { Readable } from 'node:stream';
+import { parseMarkDown } from '../blogs/utils/markdown';
+import type { Outline, ParsedHtml } from '../blogs/types';
+import { Readable, PassThrough, Transform } from 'node:stream';
 
 export const useCacheLocation = (path?: string) =>
   path
@@ -19,6 +19,7 @@ export let cacheRootPath: string,
 // 初始化缓存目录
 export function cacheInit(cacheDir?: string): string {
   cacheDir = cacheDir || process.env.CACHE_DIR || '../';
+
   process.env.CACHE_DIR = cacheDir = isAbsolute(cacheDir)
     ? cacheDir
     : resolve(process.cwd(), cacheDir);
@@ -56,6 +57,22 @@ export async function getHtmlById(id: string): Promise<ParsedHtml> {
   cacheHtml(id, parsed.html);
   cacheOutline(id, parsed.outline);
   return parsed;
+}
+
+// 获取解析后的HTML
+export async function getHtmlStreamById(id: string): Promise<Readable | null> {
+  // 之前解析过了，走缓存
+  const cachedParsed = await getParsedStreamFromCache(id);
+  if (cachedParsed != null) return cachedParsed;
+
+  // 没解析过
+  const mdBuffer = await readFile(resolve(cacheMarkdownPath, id));
+  const parsed = await parseMarkDown(mdBuffer);
+
+  // 尝试缓存结果，不阻塞正常返回
+  cacheHtml(id, parsed.html);
+  cacheOutline(id, parsed.outline);
+  return Readable.from(JSON.stringify(parsed));
 }
 
 // 移除Markdown
@@ -150,7 +167,9 @@ async function cacheOutline(id: string, outline: Outline) {
 }
 
 // 从缓存里读取
-async function getParsedFromCache(id: string): Promise<ParsedHtml | null> {
+export async function getParsedFromCache(
+  id: string,
+): Promise<ParsedHtml | null> {
   let html: string | Buffer, outline: Outline;
   // 缓存目录里没有
   if (
@@ -179,4 +198,76 @@ async function getParsedFromCache(id: string): Promise<ParsedHtml | null> {
     html,
     outline,
   };
+}
+
+// 组合可读流
+export function combineStreams(...streams: Readable[]) {
+  const newStream = new PassThrough();
+
+  const pipeNextStream = (i: number) => {
+    if (i >= streams.length) return newStream.end();
+    streams[i]
+      .on('end', () => {
+        pipeNextStream(i + 1);
+      })
+      .pipe(newStream, { end: false });
+  };
+
+  pipeNextStream(0);
+
+  return newStream;
+}
+
+// 从缓存里读取
+export async function getParsedStreamFromCache(
+  id: string,
+): Promise<Readable | null> {
+  let html: Readable, outline: Buffer;
+  // 缓存目录里没有
+  if (
+    !existsSync(resolve(cacheHtmlPath, id)) ||
+    !existsSync(resolve(cahceOutlinePath, id))
+  ) {
+    return null;
+  }
+
+  // 将html中的字符串转译，避免影响JSON
+  const escapeHTMLTransform = new Transform({
+    transform(chunk, encoding, callback) {
+      const transformChunk = chunk
+        .toString()
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+      this.push(transformChunk);
+      callback();
+    },
+  });
+
+  // 从缓存里读
+  try {
+    html = createReadStream(resolve(cacheHtmlPath, id)).pipe(
+      escapeHTMLTransform,
+    );
+  } catch (e) {
+    console.error(`读取HTML(${id})缓存失败: `, e);
+    return null;
+  }
+  try {
+    // outline体积小，直接读影响不大
+    outline = await readFile(resolve(cahceOutlinePath, id));
+  } catch (e) {
+    console.error(`读取文章大纲(${id})缓存失败: `, e);
+    return null;
+  }
+
+  const stream = combineStreams(
+    Readable.from('{ "html": "'),
+    html,
+    Readable.from('", "outline": '),
+    Readable.from(outline.toString()),
+    Readable.from(' }'),
+  );
+
+  return stream;
 }

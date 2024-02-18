@@ -202,8 +202,8 @@ export class UsersService {
   ) {
     return token.signToken(
       { ...userInfo, type: 'access' },
-      Math.floor(Date.now() / 1000) + 0 * expHour + 5,
-      // Math.floor(Date.now() / 1000) + 60 * 60 * expHour,
+      // Math.floor(Date.now() / 1000) + 0 * expHour + 5,
+      Math.floor(Date.now() / 1000) + 60 * 60 * expHour,
     );
   }
 

@@ -14,6 +14,8 @@ import {
   UseInterceptors,
   Req,
   Patch,
+  StreamableFile,
+  Header,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BlogType, BlogTypeSet } from './dto/findBlogs.dto';
@@ -24,6 +26,8 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuditBlogDTO } from './dto/auditBlog.dto';
 import { UpdateBlogDTO } from './dto/updateBlog.dto';
+import { combineStreams } from 'src/utils';
+import { Readable } from 'stream';
 
 @Controller('blogs')
 export class BlogsController {
@@ -41,7 +45,6 @@ export class BlogsController {
 
   // 获取所有 Blog
   @Get()
-  @UseGuards(AuthGuard)
   async getBlogs(
     @Query('type') type?: BlogType,
     @Query('ps') ps?: number,
@@ -89,19 +92,23 @@ export class BlogsController {
 
   // 获取博客正文
   @Get('/html/:id')
+  @Header('Content-Type', 'application/json; charset=utf-8')
   async getBlogHtml(@Param('id') id: string) {
     if (id == null || id === '') throw this.noParamException('id');
 
     // 查看有没有博客信息
-    const [blogInfo, parsed] = await Promise.all([
+    const [blogInfo, parsedStream] = await Promise.all([
       this.blogsService.selectBlogById(id),
       this.blogsService.getBlogHtml(id),
     ]);
 
-    return {
-      parsed,
-      ...blogInfo,
-    };
+    const stream = combineStreams(
+      Readable.from('{ "parsed": '),
+      parsedStream,
+      Readable.from(', "blogInfo": ' + JSON.stringify(blogInfo) + '}'),
+    );
+
+    return new StreamableFile(stream);
   }
 
   // 获取博客正文
