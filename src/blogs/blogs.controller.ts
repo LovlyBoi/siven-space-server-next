@@ -83,9 +83,15 @@ export class BlogsController {
       this.blogsService.selectAllBlogs(param),
       this.blogsService.hasNext(param),
     ]);
+    console.log(blogs);
 
     return {
-      cards: blogs.map((b) => BlogDTO.fromBlogEntity(b)),
+      // 如果有authorId，需要type来给cms系统用
+      cards: blogs.map((b) =>
+        authorId
+          ? { ...BlogDTO.fromBlogEntity(b), type: b.type, audit: b.audit }
+          : BlogDTO.fromBlogEntity(b),
+      ),
       hasNext,
     };
   }

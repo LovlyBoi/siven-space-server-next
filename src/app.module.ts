@@ -34,6 +34,11 @@ import { ImageModule } from './image/image.module';
     ImageModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    {
+      provide: AppService,
+      useClass: AppService,
+    },
+  ],
 })
 export class AppModule {}

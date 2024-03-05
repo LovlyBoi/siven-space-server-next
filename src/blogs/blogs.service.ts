@@ -60,6 +60,7 @@ export class BlogsService {
     'blog.tag_color',
     'blog.publish_date',
     'blog.update_date',
+    'blog.audit',
   ];
 
   private readonly logger = new Logger(BlogsService.name);
@@ -93,6 +94,7 @@ export class BlogsService {
 
     if (audit != null) {
       queryBuilder = queryBuilder.andWhere('blog.audit = :audit', {
+        // 0:待审核 1:审核通过 2:审核不通过
         audit: audit ? 1 : 0,
       });
     }
