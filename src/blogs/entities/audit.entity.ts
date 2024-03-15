@@ -30,6 +30,6 @@ export class Audit {
   @Column('varchar', { length: 512, default: '' })
   audit_msg: string;
 
-  @Column('timestamp', { default: () => 'CURRENT_TIMESTAMP' })
-  create_date: number;
+  @Column('datetime', { default: () => '(datetime(current_timestamp))' })
+  create_date: Date;
 }

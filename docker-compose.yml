@@ -1,0 +1,13 @@
+version: '3'
+services:
+  siven-server:
+    image: siven-server:latest
+    container_name: siven-server
+    restart: always
+    volumes:
+      # - /Users/liuzhiwen/Documents/siven-space-next/siven-space-server/.siven_cache:/app/.siven_cache
+      # - /Users/liuzhiwen/Documents/siven-space-next/siven-space-server/siven_space_next.db:/app/siven_space_next.db:rw
+      - /root/.siven_cache:/app/.siven_cache
+      - /root/siven_space_next.db:/app/siven_space_next.db:rw
+    ports:
+      - "12345:12345"

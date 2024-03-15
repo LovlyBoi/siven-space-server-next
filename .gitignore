@@ -46,3 +46,6 @@ lerna-debug.log*
 
 # docker image
 *.tar
+
+# sqlite
+siven_space_next.db

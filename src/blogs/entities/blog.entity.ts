@@ -36,11 +36,11 @@ export class Blog {
   @Column('int', { default: 0 })
   reading_volume: number;
 
-  @Column('timestamp', { default: () => 'CURRENT_TIMESTAMP' })
-  publish_date: number;
+  @Column('datetime', { default: () => '(datetime(current_timestamp))' })
+  publish_date: Date;
 
-  @Column('timestamp', { default: () => 'CURRENT_TIMESTAMP' })
-  update_date: number;
+  @Column('datetime', { default: () => '(datetime(current_timestamp))' })
+  update_date: Date;
 
   @Column('tinyint', { default: 0 })
   unuse: number;

@@ -26,8 +26,8 @@ export class User {
   @Column('varchar', { length: 512 })
   avatar: string;
 
-  @Column('timestamp', { default: () => 'CURRENT_TIMESTAMP' })
-  create_date: number;
+  @Column('datetime', { default: () => '(datetime(current_timestamp))' })
+  create_date: Date;
 
   @Column('tinyint', { default: 0 })
   unuse: number;
