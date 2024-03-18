@@ -83,7 +83,6 @@ export class BlogsController {
       this.blogsService.selectAllBlogs(param),
       this.blogsService.hasNext(param),
     ]);
-    console.log(blogs);
 
     return {
       // 如果有authorId，需要type来给cms系统用

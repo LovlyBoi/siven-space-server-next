@@ -4,7 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Param,
-  Put,
+  Post,
   Query,
   Res,
   StreamableFile,
@@ -21,7 +21,7 @@ import type { Response } from 'express';
 export class ImageController {
   constructor(private readonly imageService: ImageService) {}
 
-  @Put('/')
+  @Post('/')
   @UseGuards(AuthGuard)
   @UseInterceptors(FileInterceptor('img'))
   async uploadImage(
