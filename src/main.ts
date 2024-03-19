@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 //   NestFastifyApplication,
 // } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+// import { json } from 'body-parser';
 // import { CacheControlInterceptor } from './cacheControl.interceptor';
 
 async function bootstrap() {
@@ -24,6 +25,8 @@ async function bootstrap() {
       transform: true, // 自动转换dto传入类型
     }),
   );
+
+  // app.use(json({ limit: '5mb' }));
 
   // app.useGlobalInterceptors(new CacheControlInterceptor());
 

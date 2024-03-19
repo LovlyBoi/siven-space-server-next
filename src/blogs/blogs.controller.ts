@@ -74,7 +74,7 @@ export class BlogsController {
     const param = {
       ps: Number.isNaN(ps) ? undefined : ps,
       pn: Number.isNaN(pn) ? undefined : pn,
-      type: type as BlogType,
+      type,
       authorId,
       audit,
     };

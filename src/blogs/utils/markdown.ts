@@ -1,5 +1,9 @@
 import { marked } from 'marked';
-import { gfmHeadingId, getHeadingList } from 'marked-gfm-heading-id';
+import {
+  gfmHeadingId,
+  getHeadingList,
+  type HeadingData,
+} from 'marked-gfm-heading-id';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import createDOMPurify = require('dompurify');
@@ -7,7 +11,7 @@ import jsDom = require('jsdom');
 import type { ParsedHtml } from '../types';
 
 // 暂时保存outline
-const _outline = [];
+const _outline: HeadingData[] = [];
 
 // 添加header-id
 marked.use(gfmHeadingId(), {
@@ -24,6 +28,7 @@ marked.use(
   markedHighlight({
     highlight(code, lang) {
       const language = fixLanguage(lang);
+      console.log(language);
       return hljs.highlight(code, { language, ignoreIllegals: true }).value;
     },
   }),
@@ -46,7 +51,11 @@ export async function parseMarkDown(
 
   const html = DOMPurify.sanitize(dirtyHtml);
 
-  const outline = [..._outline];
+  const outline = _outline.map(({ text, id, level }) => ({
+    text: DOMPurify.sanitize(text),
+    id,
+    level,
+  }));
   _outline.length = 0;
 
   return {
@@ -55,95 +64,7 @@ export async function parseMarkDown(
   };
 }
 
-const hljsLang = new Set(hljs.listLanguages());
-
-// const hljsLang = new Set([
-//   'bash',
-//   'sh',
-//   'zsh',
-//   'c',
-//   'cpp',
-//   'c++',
-//   'hpp',
-//   'cc',
-//   'h++',
-//   'cxx',
-//   'css',
-//   'curl',
-//   'dart',
-//   'diff',
-//   'patch',
-//   'django',
-//   'jinja',
-//   'dockerfile',
-//   'docker',
-//   'bat',
-//   'dos',
-//   'cmd',
-//   'dust',
-//   'dst',
-//   'excel',
-//   'xls',
-//   'xlsx',
-//   'go',
-//   'golang',
-//   'groovy',
-//   'xml',
-//   'html',
-//   'xhtml',
-//   'rss',
-//   'atom',
-//   'xjb',
-//   'xsd',
-//   'xsl',
-//   'plist',
-//   'svg',
-//   'http',
-//   'https',
-//   'haskell',
-//   'hs',
-//   'json',
-//   'java',
-//   'jsp',
-//   'javascript',
-//   'js',
-//   'jsx',
-//   'kotlin',
-//   'kt',
-//   'less',
-//   'lisp',
-//   'lua',
-//   'markdown',
-//   'md',
-//   'mkdown',
-//   'mkd',
-//   'matlab',
-//   'nginx',
-//   'nginxconf',
-//   'php',
-//   'plaintext',
-//   'txt',
-//   'text',
-//   'objectivec',
-//   'mm',
-//   'objc',
-//   'obj-c',
-//   'obj-c++',
-//   'objective-c++',
-//   'shell',
-//   'console',
-//   'stylus',
-//   'styl',
-//   'svelte',
-//   'swift',
-//   'typescript',
-//   'ts',
-//   'vbnet',
-//   'vb',
-//   'vim',
-//   'yml',
-//   'yaml',
-// ]);
+const hljsLang = new Set([...hljs.listLanguages(), 'html']);
 
 function fixLanguage(lang: string) {
   lang = lang.trim().toLowerCase();
@@ -152,10 +73,14 @@ function fixLanguage(lang: string) {
       return 'html';
     case 'react':
     case 'react-jsx':
-      return 'jsx';
+    case 'js':
+    case 'jsx':
+      return 'javascript';
     case 'tsx':
     case 'react-tsx':
-      return 'ts';
+      return 'typescript';
+    case 'html':
+      return 'html';
     default:
       return hljsLang.has(lang) ? lang : 'text';
   }

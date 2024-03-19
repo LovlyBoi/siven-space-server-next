@@ -83,7 +83,17 @@ export class BlogsService {
 
     if (type !== 'all') {
       // 查的不是全部，指定类型
-      queryBuilder = queryBuilder.andWhere('blog.type = :type', { type });
+      if (type === '@essays') {
+        queryBuilder = queryBuilder.andWhere('blog.type = :type', {
+          type: 'life',
+        });
+      } else if (type === '@notes') {
+        queryBuilder = queryBuilder.andWhere('blog.type != :type', {
+          type: 'life',
+        });
+      } else {
+        queryBuilder = queryBuilder.andWhere('blog.type = :type', { type });
+      }
     }
 
     if (authorId) {
@@ -100,6 +110,7 @@ export class BlogsService {
     }
 
     queryBuilder = queryBuilder.orderBy('blog.update_date', 'DESC');
+    console.log(queryBuilder.getSql());
 
     if (ps == null || pn == null || ps < 1 || pn < 1) {
       return queryBuilder.getMany();

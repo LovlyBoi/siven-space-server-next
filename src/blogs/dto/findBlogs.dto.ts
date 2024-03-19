@@ -9,6 +9,8 @@ const BlogTypes = [
   'life',
   'back-end-tec',
   'other-tec',
+  '@notes',
+  '@essays',
 ] as const;
 
 export const BlogTypeSet = new Set(BlogTypes);
