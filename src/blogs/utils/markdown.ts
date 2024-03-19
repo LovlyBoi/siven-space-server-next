@@ -71,16 +71,15 @@ function fixLanguage(lang: string) {
   switch (lang) {
     case 'vue':
       return 'html';
-    case 'react':
-    case 'react-jsx':
     case 'js':
     case 'jsx':
+    case 'react':
+    case 'react-jsx':
       return 'javascript';
+    case 'ts':
     case 'tsx':
     case 'react-tsx':
       return 'typescript';
-    case 'html':
-      return 'html';
     default:
       return hljsLang.has(lang) ? lang : 'text';
   }
