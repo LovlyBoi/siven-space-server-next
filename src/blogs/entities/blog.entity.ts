@@ -9,7 +9,7 @@ import {
   OneToOne,
 } from 'typeorm';
 
-@Entity({ name: 'blogs' })
+@Entity('blogs')
 export class Blog {
   @PrimaryColumn('varchar', { length: 32 })
   nanoid: string;

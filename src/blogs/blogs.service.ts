@@ -8,7 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
-  // getHtmlById,
   getMarkdown,
   removeCache,
   writeMarkdown,
@@ -124,30 +123,51 @@ export class BlogsService {
 
   // 查找某个博客信息
   selectBlogById(blogId: string) {
-    return this.blogsRepository
-      .createQueryBuilder('blog')
-      .select(this.blogSelector)
-      .innerJoinAndSelect('blog.author', 'user')
-      .where('blog.nanoid = :nanoid', { nanoid: blogId })
-      .andWhere('blog.unuse = :unuse', { unuse: 0 })
-      .getOne();
+    // return this.blogsRepository
+    //   .createQueryBuilder('blog')
+    //   .select(this.blogSelector)
+    //   .innerJoinAndSelect('blog.author', 'user')
+    //   .where('blog.nanoid = :nanoid', { nanoid: blogId })
+    //   .andWhere('blog.unuse = :unuse', { unuse: 0 })
+    //   .getOne();
+
+    return this.blogsRepository.findOne({
+      where: { nanoid: blogId, unuse: 0 },
+      relations: ['author'],
+      select: [
+        'nanoid',
+        'author',
+        'type',
+        'title',
+        'pics',
+        'tag_name',
+        'tag_color',
+        'publish_date',
+        'update_date',
+        'audit',
+      ],
+    });
   }
 
   // 查找博客个数
   async selectBlogsCount(type?: BlogType) {
-    const sqlBuilder = this.blogsRepository
-      .createQueryBuilder('blog')
-      .select('count(blog.nanoid) as count')
-      .where('blog.unuse = :unuse', { unuse: 0 })
-      .andWhere('blog.audit = :audit', { audit: 0 });
+    // const sqlBuilder = this.blogsRepository
+    //   .createQueryBuilder('blog')
+    //   .select('count(blog.nanoid) as count')
+    //   .where('blog.unuse = :unuse', { unuse: 0 })
+    //   .andWhere('blog.audit = :audit', { audit: 0 });
 
-    const { count } = await (type
-      ? sqlBuilder
-          .andWhere('blog.type = :type', { type })
-          .getRawOne<{ count: number }>()
-      : sqlBuilder.getRawOne<{ count: number }>());
+    // const { count } = await (type
+    //   ? sqlBuilder
+    //       .andWhere('blog.type = :type', { type })
+    //       .getRawOne<{ count: number }>()
+    //   : sqlBuilder.getRawOne<{ count: number }>());
 
-    return count;
+    // return count;
+
+    return this.blogsRepository.count({
+      where: { unuse: 0, audit: 0, type: type === 'all' ? undefined : type },
+    });
   }
 
   // 查看还有没有后续的博客
@@ -249,10 +269,25 @@ export class BlogsService {
 
   // 更新博客信息
   async updateBlog(blogId: string, blog: UpdateBlogParam) {
-    const result = await this.blogsRepository
-      .createQueryBuilder()
-      .update(Blog)
-      .set({
+    // const result = await this.blogsRepository
+    //   .createQueryBuilder()
+    //   .update(Blog)
+    //   .set({
+    //     type: blog.type,
+    //     title: blog.title,
+    //     pics: blog.pictutres,
+    //     tag_name: blog.tag.name,
+    //     tag_color: blog.tag.color,
+    //     // 需要重新审核
+    //     audit: 1,
+    //     update_date: () => '(datetime(current_timestamp))',
+    //   })
+    //   .where('nanoid = :id', { id: blogId })
+    //   .execute();
+
+    const result = this.blogsRepository.update(
+      { nanoid: blogId },
+      {
         type: blog.type,
         title: blog.title,
         pics: blog.pictutres,
@@ -260,10 +295,9 @@ export class BlogsService {
         tag_color: blog.tag.color,
         // 需要重新审核
         audit: 1,
-        update_date: () => 'CURRENT_TIMESTAMP',
-      })
-      .where('nanoid = :id', { id: blogId })
-      .execute();
+        update_date: () => '(datetime(current_timestamp))',
+      },
+    );
 
     this.logger.log(`Update blog ${blogId}`);
 
@@ -272,15 +306,23 @@ export class BlogsService {
 
   // 更新博客更新时间，并重新提交审核
   async updateBlogUpdateDate(blogId: string) {
-    return await this.blogsRepository
-      .createQueryBuilder()
-      .update(Blog)
-      .set({
+    // return await this.blogsRepository
+    //   .createQueryBuilder()
+    //   .update(Blog)
+    //   .set({
+    //     audit: 1,
+    //     update_date: () => 'CURRENT_TIMESTAMP',
+    //   })
+    //   .where('nanoid = :id', { id: blogId })
+    //   .execute();
+
+    return this.blogsRepository.update(
+      { nanoid: blogId },
+      {
         audit: 1,
-        update_date: () => 'CURRENT_TIMESTAMP',
-      })
-      .where('nanoid = :id', { id: blogId })
-      .execute();
+        update_date: () => '(datetime(current_timestamp))',
+      },
+    );
   }
 
   // 存储Markdown原文
@@ -319,31 +361,36 @@ export class BlogsService {
     msg?: string,
   ) {
     const auditId = await this.createAuditRecord(blogId, managerId, msg);
-    return this.blogsRepository
-      .createQueryBuilder()
-      .update(Blog)
-      .set({ audit_id: auditId, audit: state ? 0 : 1 })
-      .where('nanoid = :id', { id: blogId })
-      .execute();
+    return this.blogsRepository.update(
+      { nanoid: blogId },
+      { audit_id: auditId, audit: state ? 0 : 1 },
+    );
   }
 
   // 创建审核记录
   async createAuditRecord(blogId: string, managerId: string, msg = '') {
     const auditId = nanoid();
 
-    await this.auditRepository
-      .createQueryBuilder()
-      .insert()
-      .into(Audit)
-      .values([
-        {
-          audit_id: auditId,
-          blog_id: blogId,
-          admin_id: managerId,
-          audit_msg: msg,
-        },
-      ])
-      .execute();
+    // await this.auditRepository
+    //   .createQueryBuilder()
+    //   .insert()
+    //   .into(Audit)
+    //   .values([
+    //     {
+    //       audit_id: auditId,
+    //       blog_id: blogId,
+    //       admin_id: managerId,
+    //       audit_msg: msg,
+    //     },
+    //   ])
+    //   .execute();
+
+    this.auditRepository.insert({
+      audit_id: auditId,
+      blog_id: blogId,
+      admin_id: managerId,
+      audit_msg: msg,
+    });
 
     return auditId;
   }
