@@ -35,7 +35,7 @@ marked.use(
 
       const lineNumber = codeHtml.split('\n').map((_, num) => num + 1);
       const lineNumberWrapper = `<div class="line-numbers" aria-hidden="true">${lineNumber.map((num) => `<div data-line-num="${num}"></div>`).join('')}</div>`;
-      return `<div class="code-wrapper">${lineNumberWrapper}<div class="code">${codeHtml}</div></div>`;
+      return `<div data-lang="${language}" class="code-wrapper">${lineNumberWrapper}<div class="code">${codeHtml}</div></div>`;
     },
   }),
 );
