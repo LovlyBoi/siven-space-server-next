@@ -28,8 +28,14 @@ marked.use(
   markedHighlight({
     highlight(code, lang) {
       const language = fixLanguage(lang);
-      console.log(language);
-      return hljs.highlight(code, { language, ignoreIllegals: true }).value;
+      const codeHtml = hljs.highlight(code, {
+        language,
+        ignoreIllegals: true,
+      }).value;
+
+      const lineNumber = codeHtml.split('\n').map((_, num) => num + 1);
+      const lineNumberWrapper = `<div class="line-numbers" aria-hidden="true">${lineNumber.map((num) => `<div data-line-num="${num}"></div>`).join('')}</div>`;
+      return `<div class="code-wrapper">${lineNumberWrapper}<div class="code">${codeHtml}</div></div>`;
     },
   }),
 );
