@@ -4,14 +4,14 @@ import {
   getHeadingList,
   type HeadingData,
 } from 'marked-gfm-heading-id';
-import { markedHighlight } from 'marked-highlight';
-import hljs from 'highlight.js';
-import createDOMPurify = require('dompurify');
 import jsDom = require('jsdom');
+import createDOMPurify = require('dompurify');
 import type { ParsedHtml } from '../types';
 
 // 暂时保存outline
 const _outline: HeadingData[] = [];
+// 所有支持的语言，参考 https://shiki-zh-docs.vercel.app/languages
+let supportedLang = new Set<string>();
 
 // 添加header-id
 marked.use(gfmHeadingId(), {
@@ -23,26 +23,86 @@ marked.use(gfmHeadingId(), {
   },
 });
 
-// 使用highlightjs
-marked.use(
-  markedHighlight({
-    highlight(code, lang) {
-      const language = fixLanguage(lang);
-      const codeHtml = hljs.highlight(code, {
-        language,
-        ignoreIllegals: true,
-      }).value;
-
-      const lineNumber = codeHtml.split('\n').map((_, num) => num + 1);
-      const lineNumberWrapper = `<div class="line-numbers" aria-hidden="true">${lineNumber.map((num) => `<div data-line-num="${num}"></div>`).join('')}</div>`;
-      return `<div data-lang="${language}" class="code-wrapper">${lineNumberWrapper}<div class="code">${codeHtml}</div></div>`;
+// shiki仅支持ESM，CJS不支持同步加载ESM
+// 而TS会自动编译import到require，所以还需要eval骗一下TS
+const loaded = Promise.all([
+  eval(`import('shiki')`) as Promise<typeof import('shiki')>,
+  eval(`import('marked-shiki')`) as Promise<typeof import('marked-shiki')>,
+  eval(`import('@shikijs/transformers')`) as Promise<
+    typeof import('@shikijs/transformers')
+  >,
+]).then(
+  async ([
+    { getHighlighter, bundledLanguages },
+    { default: markedShiki },
+    {
+      transformerNotationDiff,
+      transformerNotationHighlight,
+      transformerNotationWordHighlight,
+      transformerNotationFocus,
+      transformerNotationErrorLevel,
+      transformerMetaHighlight,
+      transformerMetaWordHighlight,
     },
-  }),
+  ]) => {
+    supportedLang = new Set(Object.keys(bundledLanguages));
+
+    const highlighter = await getHighlighter({
+      // 加载所有语言
+      langs: [...supportedLang],
+      themes: ['min-light', 'nord', 'min-dark'],
+    });
+
+    // 记录每次的code有多少行代码
+    let lineCounter = 0;
+
+    marked.use(
+      markedShiki({
+        async highlight(code, lang, props) {
+          const language = fixLanguage(lang);
+          lineCounter = 0;
+          const html = highlighter.codeToHtml(code, {
+            lang: language,
+            themes: {
+              light: 'min-light',
+              dark: 'nord',
+            },
+            meta: { __raw: props.join(' ') }, // required by `transformerMeta*`
+            transformers: [
+              {
+                line(node, line) {
+                  node.properties['data-line'] = line;
+                  lineCounter = Math.max(lineCounter, line);
+                },
+              },
+              transformerNotationDiff(),
+              transformerNotationHighlight(),
+              transformerNotationWordHighlight(),
+              transformerNotationFocus(),
+              transformerNotationErrorLevel(),
+              transformerMetaHighlight(),
+              transformerMetaWordHighlight(),
+            ],
+          });
+
+          return `<pre class="shiki-code-block" data-lang="${language}">
+  <div class="shiki-code-lines">${Array(lineCounter)
+    .fill(0)
+    .map((_, index) => `<div data-line=${index + 1}></div>`)
+    .join('')}</div>
+  ${html}
+</pre>`;
+        },
+      }),
+    );
+  },
 );
 
 export async function parseMarkDown(
   markdownString: string | Buffer,
 ): Promise<ParsedHtml> {
+  await loaded;
+
   markdownString =
     typeof markdownString === 'string'
       ? markdownString
@@ -70,23 +130,23 @@ export async function parseMarkDown(
   };
 }
 
-const hljsLang = new Set([...hljs.listLanguages(), 'html']);
-
+// 调用时须确保shiki已经加载完成
 function fixLanguage(lang: string) {
   lang = lang.trim().toLowerCase();
   switch (lang) {
     case 'vue':
-      return 'html';
+      return 'vue';
     case 'js':
+      return 'javascript';
     case 'jsx':
     case 'react':
     case 'react-jsx':
-      return 'javascript';
+      return 'jsx';
     case 'ts':
-    case 'tsx':
-    case 'react-tsx':
       return 'typescript';
+    case 'react-tsx':
+      return 'tsx';
     default:
-      return hljsLang.has(lang) ? lang : 'text';
+      return supportedLang.has(lang) ? lang : 'text';
   }
 }
