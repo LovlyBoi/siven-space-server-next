@@ -231,8 +231,50 @@ export class BlogsController {
 
     await this.blogsService.deleteMarkdown(blogId);
     await this.blogsService.storeMarkdown(file, blogId);
+    // 移除缓存
+    this.blogsService.removeMarkdownCache(blogId);
     // 更新博客编辑时间（不需要等他完成）
     this.blogsService.updateBlogUpdateDate(blogId);
+
+    return { id: blogId };
+  }
+
+  // 编辑博客（更新 markdown 原文）
+  @Post('edit/:id')
+  @UseGuards(AuthGuard)
+  async updateMarkdownBlog(
+    @Param('id') blogId: string,
+    @Req() { user: tokenInfo },
+    @Body() markdownBlog: string,
+  ) {
+    const blogInfo = await this.blogsService.selectBlogById(blogId);
+
+    const { id, role } = tokenInfo;
+
+    // 数据库里没有博客信息
+    if (!blogInfo) {
+      throw new HttpException('The blog does not exist.', HttpStatus.NOT_FOUND);
+    } else if (blogInfo.author.user_id !== id && role !== 3) {
+      // 不是作者，也不是超管
+      throw new HttpException(
+        'You are not the author of this blog.',
+        HttpStatus.FORBIDDEN,
+      );
+    } else if (!this.blogsService.isMarkdownExist(blogId)) {
+      // 缓存里面没有Markdown原文
+      throw new HttpException(
+        'The markdown file does not exist.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    await Promise.all([
+      this.blogsService.updateMarkdownBlog(blogId, markdownBlog),
+      // 更新时间
+      this.blogsService.updateBlogUpdateDate(blogId),
+      // 移除缓存
+      this.blogsService.removeMarkdownCache(blogId),
+    ]);
 
     return { id: blogId };
   }

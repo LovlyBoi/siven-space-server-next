@@ -15,6 +15,7 @@ import {
   removeMarkdown,
   isMarkDownExist,
   getHtmlStreamById,
+  editMarkdown,
 } from 'src/utils';
 import { Blog } from './entities/blog.entity';
 import { BlogType } from './dto/findBlogs.dto';
@@ -264,6 +265,10 @@ export class BlogsService {
     this.logger.log(`Update blog ${blogId}`);
 
     return result;
+  }
+
+  updateMarkdownBlog(blogId: string, markdown: string) {
+    return editMarkdown(blogId, markdown);
   }
 
   // 更新博客更新时间，并重新提交审核
