@@ -240,12 +240,12 @@ export class BlogsController {
   }
 
   // 编辑博客（更新 markdown 原文）
-  @Post('edit/:id')
+  @Post('edit/markdown/:id')
   @UseGuards(AuthGuard)
   async updateMarkdownBlog(
     @Param('id') blogId: string,
     @Req() { user: tokenInfo },
-    @Body() markdownBlog: string,
+    @Body() { content }: { content: string },
   ) {
     const blogInfo = await this.blogsService.selectBlogById(blogId);
 
@@ -269,7 +269,7 @@ export class BlogsController {
     }
 
     await Promise.all([
-      this.blogsService.updateMarkdownBlog(blogId, markdownBlog),
+      this.blogsService.updateMarkdownBlog(blogId, content),
       // 更新时间
       this.blogsService.updateBlogUpdateDate(blogId),
       // 移除缓存

@@ -102,7 +102,7 @@ export class BlogsService {
       });
     }
 
-    if (audit != null) {
+    if (audit != null&& type !== 'all') {
       queryBuilder = queryBuilder.andWhere('blog.audit = :audit', {
         // 0:待审核 1:审核通过 2:审核不通过
         audit: audit ? 1 : 0,
