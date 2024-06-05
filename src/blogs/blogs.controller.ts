@@ -131,7 +131,7 @@ export class BlogsController {
   }
 
   // 发布博客
-  @Put('/')
+  @Post('/')
   async publishBlog(@Body() blog: PublishBlogDTO) {
     const b = {
       id: blog.id,
@@ -240,7 +240,7 @@ export class BlogsController {
   }
 
   // 编辑博客（更新 markdown 原文）
-  @Post('edit/markdown/:id')
+  @Put('markdown/:id')
   @UseGuards(AuthGuard)
   async updateMarkdownBlog(
     @Param('id') blogId: string,
