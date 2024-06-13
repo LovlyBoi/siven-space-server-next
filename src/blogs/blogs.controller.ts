@@ -97,23 +97,33 @@ export class BlogsController {
 
   // 获取博客正文
   @Get('/html/:id')
-  @Header('Content-Type', 'application/json; charset=utf-8')
+  // @Header('Content-Type', 'application/json; charset=utf-8')
   async getBlogHtml(@Param('id') id: string) {
     if (id == null || id === '') throw this.noParamException('id');
 
+    // // 查看有没有博客信息
+    // const [blogInfo, parsedStream] = await Promise.all([
+    //   this.blogsService.selectBlogById(id),
+    //   this.blogsService.getBlogHtml(id),
+    // ]);
+
+    // const stream = combineStreams(
+    //   Readable.from('{ "parsed": '),
+    //   parsedStream,
+    //   Readable.from(', "blogInfo": ' + JSON.stringify(blogInfo) + '}'),
+    // );
+
+    // return new StreamableFile(stream);
     // 查看有没有博客信息
-    const [blogInfo, parsedStream] = await Promise.all([
+    const [blogInfo, parsed] = await Promise.all([
       this.blogsService.selectBlogById(id),
       this.blogsService.getBlogHtml(id),
     ]);
 
-    const stream = combineStreams(
-      Readable.from('{ "parsed": '),
-      parsedStream,
-      Readable.from(', "blogInfo": ' + JSON.stringify(blogInfo) + '}'),
-    );
-
-    return new StreamableFile(stream);
+    return {
+      parsed,
+      blogInfo,
+    };
   }
 
   // 获取博客正文

@@ -14,7 +14,8 @@ import {
   isMarkDownExist as isMarkDownExistUtil,
   removeMarkdown,
   isMarkDownExist,
-  getHtmlStreamById,
+  getHtmlById,
+  // getHtmlStreamById,
   editMarkdown,
 } from 'src/utils';
 import { Blog } from './entities/blog.entity';
@@ -176,7 +177,7 @@ export class BlogsService {
       );
     }
 
-    return getHtmlStreamById(blogId);
+    return getHtmlById(blogId);
   }
 
   // 添加新博客
