@@ -14,7 +14,7 @@ export class Blog {
   @PrimaryColumn('varchar', { length: 32 })
   nanoid: string;
 
-  @ManyToOne(() => User, (user) => user.user_name)
+  @ManyToOne(() => User, (user) => user.user_id)
   @JoinColumn({ name: 'author' })
   author: User;
 

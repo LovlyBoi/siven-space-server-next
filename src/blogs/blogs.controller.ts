@@ -14,8 +14,8 @@ import {
   UseInterceptors,
   Req,
   Patch,
-  StreamableFile,
-  Header,
+  // StreamableFile,
+  // Header,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BlogType, BlogTypeSet } from './dto/findBlogs.dto';
@@ -26,8 +26,8 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuditBlogDTO } from './dto/auditBlog.dto';
 import { UpdateBlogDTO } from './dto/updateBlog.dto';
-import { combineStreams } from 'src/utils';
-import { Readable } from 'stream';
+// import { combineStreams } from 'src/utils';
+// import { Readable } from 'stream';
 
 @Controller('blogs')
 export class BlogsController {
@@ -50,8 +50,15 @@ export class BlogsController {
     @Query('ps') ps?: number,
     @Query('pn') pn?: number,
     @Query('author') authorId?: string,
+    @Query('from') from?: 'cms',
   ) {
-    return this.selectAllBlogs(ps, pn, type, authorId, false);
+    return this.selectAllBlogs(
+      ps,
+      pn,
+      type,
+      authorId,
+      from === 'cms' && type === 'all' ? [0, 1] : undefined,
+    );
   }
 
   async selectAllBlogs(
@@ -59,7 +66,7 @@ export class BlogsController {
     pn?: number,
     type?: BlogType,
     authorId?: string,
-    audit = false,
+    audit?: (0 | 1 | 2)[],
   ) {
     // 检查type
     if (!type) type = 'all';
@@ -305,7 +312,7 @@ export class BlogsController {
     if (role !== 2 && role !== 3)
       throw new HttpException('You are not an admin.', HttpStatus.FORBIDDEN);
 
-    return this.selectAllBlogs(ps, pn, type, authorId, true);
+    return this.selectAllBlogs(ps, pn, type, authorId, [1]);
   }
 
   // 审核文章

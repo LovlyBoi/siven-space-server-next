@@ -20,9 +20,12 @@ export type BlogType = (typeof BlogTypes)[number];
 export class FindBlogDTO {
   @IsString()
   type: string;
+
   readonly from?: string;
+
   @IsString()
   ps: string | number = '10';
+
   @IsString()
   pn: string | number = '1';
 }

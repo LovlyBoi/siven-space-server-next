@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import {
   getMarkdown,
   removeCache,
@@ -30,7 +30,7 @@ type HandledParams = {
   pn?: number;
   type: BlogType;
   authorId?: string;
-  audit?: boolean;
+  audit?: number[];
 };
 
 // 发布博客 service 使用的参数类型
@@ -76,6 +76,7 @@ export class BlogsService {
 
   // 查询所有博客数据
   async selectAllBlogs({ ps, pn, type, authorId, audit }: HandledParams) {
+    // console.log('params', ps, pn, type, authorId, audit);
     let queryBuilder = this.blogsRepository
       .createQueryBuilder('blog')
       .select(this.blogSelector)
@@ -103,24 +104,29 @@ export class BlogsService {
       });
     }
 
-    if (audit != null&& type !== 'all') {
-      queryBuilder = queryBuilder.andWhere('blog.audit = :audit', {
-        // 0:待审核 1:审核通过 2:审核不通过
-        audit: audit ? 1 : 0,
-      });
+    // 0: 审核通过 1: 未审核 2: 不通过
+    if (audit == null) {
+      audit = [0];
     }
+    queryBuilder = queryBuilder.andWhere(
+      new Brackets((qb) => {
+        for (let i = 0; i < audit.length; i++) {
+          if (i === 0) {
+            qb.where(`blog.audit = :audit${i}`, { [`audit${i}`]: audit[i] });
+          } else {
+            qb.orWhere(`blog.audit = :audit${i}`, { [`audit${i}`]: audit[i] });
+          }
+        }
+      }),
+    );
 
     queryBuilder = queryBuilder.orderBy('blog.update_date', 'DESC');
-    console.log(queryBuilder.getSql());
 
-    if (ps == null || pn == null || ps < 1 || pn < 1) {
-      return queryBuilder.getMany();
-    } else {
-      return queryBuilder
-        .limit(ps)
-        .offset(pn - 1)
-        .getMany();
+    if (!(ps == null || pn == null || ps < 1 || pn < 1)) {
+      queryBuilder = queryBuilder.limit(ps).offset((pn - 1) * ps);
     }
+    console.log(queryBuilder.getSql());
+    return queryBuilder.getMany();
   }
 
   // 查找某个博客信息
@@ -154,6 +160,7 @@ export class BlogsService {
   async hasNext({ ps, pn, type }: HandledParams) {
     const current = ps * pn;
     const total = await this.selectBlogsCount(type);
+    console.log('hasNext', current, total, ps, pn);
     return current < total;
   }
 
